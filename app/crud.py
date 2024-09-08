@@ -174,20 +174,25 @@ async def assign_initial_achievements(db: AsyncSession, user_id: UUID):
 
 async def get_data_leaderboard(telegram_id: int, limit_lead: int, db: AsyncSession):
     # Query to select the top "limit_lead" users ordered by their points in descending order
-    query_top = (select(UserModel).order_by(desc(UserModel.points)).limit(limit_lead))
+    query_top = (select(UserModel).order_by(desc(UserModel.points)))
     # Query to select the user based on telegram_id
     query_user = (select(UserModel).where(UserModel.telegram_id == telegram_id))
     result_top = await db.execute(query_top)# Execute the top users query asynchronously
     result_user = await db.execute(query_user)# Execute the user query asynchronously
+    all_users = result_top.scalars().all()
+    for index, user in enumerate(all_users):
+        if user.telegram_id == telegram_id:
+            user_position: int = index + 1  # Позиції починаються з 1
+            break
 
     # Create a list of top users' dictionaries from the result, or an empty list if no results
-    users_list = [row.__dict__ for row in result_top.scalars().all()] if result_top else []
+    users_list = [{**row.__dict__, "position": index + 1} for index, row in enumerate(all_users)][:limit_lead] if all_users else []
 
     # Get the user information for the specified telegram_id, or None if not found
     user_info = result_user.scalars().first()
 
     if user_info:            # Check if the user exists in the database
-        user_dict = user_info.__dict__ # Convert user_info to dictionary format
+        user_dict = {**user_info.__dict__,"position": user_position} # Convert user_info to dictionary format
 
         # Check if the user is already in the top users list
         if user_dict not in users_list:

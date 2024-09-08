@@ -16,16 +16,15 @@ async def get_leaderboard(request: Request, db: AsyncSession = Depends(get_db)):
     user_data = json.loads(user_data_str) if user_data_str else {}
     telegram_id = user_data["id"]
 
-    existing_lead = await get_data_leaderboard(telegram_id,2, db)
+    existing_lead = await get_data_leaderboard(telegram_id,5, db)
     user_data_response = []
     for user in existing_lead:
         UserSchema.model_validate(user) if user else None
         if user:
             user_data_response.append({
-                "id": str(user['id']),
+                "position": user['position'],
                 "telegram_id": user['telegram_id'],
-                "username": user['username'],
-                "level": user['level'],
+                "first_name": user['first_name'],
                 "points": user['points'],
             })
     return {"user": user_data_response, "message": "leaderboard"}
