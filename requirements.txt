@@ -1,0 +1,10 @@
+fastapi                 # A modern, fast web framework for building APIs with Python 3.7+ based on standard Python type hints.
+uvicorn                 # A lightning-fast ASGI server for serving FastAPI applications, compatible with ASGI applications.
+sqlalchemy              # An SQL toolkit and Object-Relational Mapping (ORM) library for Python, used for interacting with databases.
+asyncpg                 # A database driver for PostgreSQL that supports asynchronous operations, used with SQLAlchemy for async database operations.
+pydantic                # A data validation and settings management library using Python type annotations, often used for request validation in FastAPI.
+python-dotenv           # A library to load environment variables from a `.env` file into the environment, useful for managing configuration settings.
+alembic                 # A lightweight database migration tool for use with SQLAlchemy, allowing you to manage and apply database schema changes.
+pytest                  # A testing framework for Python that makes it easy to write simple and scalable test cases, widely used for testing code.
+httpx                   # An async HTTP client for Python 3, allowing for high-performance HTTP requests, useful for making API calls in an asynchronous manner.
+pytest-asyncio          # A plugin for handling asynchronous tests with pytest
