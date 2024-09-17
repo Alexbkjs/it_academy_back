@@ -56,9 +56,15 @@ def validate_init_data(init_data_raw: str, bot_token: str) -> dict:
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # Exclude all paths starting with /docs and /openapi.json from the authorization check
+        if request.url.path.startswith("/docs") or request.url.path == "/openapi.json":
+            # Directly proceed without checking authorization
+            return await call_next(request)
+
+
         # Extract Authorization header
         auth_header = request.headers.get("Authorization")
-        
+        print(auth_header, 'auth_header')
         if not auth_header or not auth_header.startswith("tma "):
             raise HTTPException(
                 status_code=400,
