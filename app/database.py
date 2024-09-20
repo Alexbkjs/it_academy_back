@@ -25,6 +25,7 @@ AsyncSessionLocal = sessionmaker(
 # Create a base class for declarative models
 Base = declarative_base()
 
+
 # Dependency to get a database session
 # Uses asynchronous context manager to ensure proper session handling
 async def get_db():

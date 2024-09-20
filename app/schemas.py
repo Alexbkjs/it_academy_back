@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
+
 
 # Enum for UserRole
 class UserRole(str, Enum):
@@ -10,8 +11,10 @@ class UserRole(str, Enum):
     avatar = "avatar"
     kingdom = "kingdom"
 
+
 class RoleSelection(BaseModel):
     role: UserRole
+
 
 # Quest schema
 class QuestBase(BaseModel):
@@ -21,6 +24,7 @@ class QuestBase(BaseModel):
     award: Optional[str] = None
     goal: Optional[str] = None
 
+
 class Quest(QuestBase):
     id: UUID
     created_at: datetime
@@ -29,9 +33,11 @@ class Quest(QuestBase):
     class Config:
         from_attributes = True
 
+
 # Requirement schema
 class RequirementBase(BaseModel):
     description: str
+
 
 class Requirement(RequirementBase):
     id: UUID
@@ -40,9 +46,11 @@ class Requirement(RequirementBase):
     class Config:
         from_attributes = True
 
+
 # Reward schema
 class RewardBase(BaseModel):
     description: str
+
 
 class Reward(RewardBase):
     id: UUID
@@ -51,6 +59,7 @@ class Reward(RewardBase):
     class Config:
         from_attributes = True
 
+
 # UserQuestProgress schema
 class UserQuestProgressBase(BaseModel):
     status: str
@@ -58,6 +67,7 @@ class UserQuestProgressBase(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     is_locked: bool = True
+
 
 class UserQuestProgress(UserQuestProgressBase):
     id: UUID
@@ -69,11 +79,13 @@ class UserQuestProgress(UserQuestProgressBase):
     class Config:
         from_attributes = True
 
+
 # Achievement schema
 class AchievementBase(BaseModel):
     name: str
     description: str
     image_url: Optional[str] = None
+
 
 class Achievement(AchievementBase):
     id: UUID
@@ -83,10 +95,12 @@ class Achievement(AchievementBase):
     class Config:
         from_attributes = True
 
+
 # UserAchievement schema
 class UserAchievementBase(BaseModel):
     status: str  # "active" or "blocked"
     is_locked: bool = False
+
 
 class UserAchievement(UserAchievementBase):
     id: UUID
@@ -97,6 +111,7 @@ class UserAchievement(UserAchievementBase):
     class Config:
         from_attributes = True
 
+
 # User schema
 class UserBase(BaseModel):
     telegram_id: int
@@ -104,7 +119,9 @@ class UserBase(BaseModel):
     last_name: str
     username: Optional[str] = None
     user_class: Optional[str] = None
-    image_url: Optional[str] = "https://quest_progress-app-bucket.s3.eu-north-1.amazonaws.com/images/02.jpg"
+    image_url: Optional[str] = (
+        "https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg"
+    )
     level: int = 1
     points: int = 100
     coins: int = 1000
@@ -116,6 +133,7 @@ class UserBase(BaseModel):
     quest_progress: List[UserQuestProgress] = []  # Nested UserQuestProgress
     achievements: List[UserAchievement] = []  # Nested UserAchievement
 
+
 class User(UserBase):
     id: UUID
     created_at: datetime
@@ -123,13 +141,3 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
-
-
-
-
-
-
-
-
-
-
