@@ -111,6 +111,7 @@ async def seed_quests():
                     name="Базовий квест",
                     image_url="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/basic.png",
                     description="Візит до Академії для отримання першого рівня та вибору базового класу",
+                    requirements="Зареєструватися в системі та мати базові навички орієнтації у грі.",
                     award="очки досвіду, підвищення класу",
                     goal="Візит до Академії для отримання першого рівня та вибору базового класу",
                 ),
@@ -119,6 +120,7 @@ async def seed_quests():
                     name="Рутинний квест",
                     image_url="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/routine.png",
                     description="Виконання тестового завдання для отримання артефакту та Мідних Монет",
+                    requirements="Необхідно мати базовий рівень та пройти початковий квест.",
                     award="очки досвіду, мідні монети, артефакти",
                     goal="Виконання тестового завдання для отримання артефакту та Мідних Монет",
                 ),
@@ -127,6 +129,7 @@ async def seed_quests():
                     name="Пригодницький квест",
                     image_url="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/adventure.png",
                     description="Проходження кар’єрного коучинга, навчальних курсів та подібних завдань",
+                    requirements="Необхідно пройти попередні рівні квестів і мати достатньо очок досвіду.",
                     award="підвищення класу, рівня, артефакти, мідні монети",
                     goal="Проходження кар’єрного коучинга, навчальних курсів та подібних завдань",
                 ),
@@ -135,6 +138,7 @@ async def seed_quests():
                     name="Багаторазовий квест",
                     image_url="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/reusable.png",
                     description="Залучайте нових учасників за партнерським посиланням",
+                    requirements="Мати активний акаунт і доступ до партнерської програми.",
                     award="очки досвіду",
                     goal="Залучайте нових учасників за партнерським посиланням",
                 ),
@@ -143,6 +147,7 @@ async def seed_quests():
                     name="Командний квест",
                     image_url="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/team.png",
                     description="Участь у командному проекті для отримання досвіду та Золотих Монет",
+                    requirements="Необхідно бути частиною команди та мати базові навички роботи в групі.",
                     award="очки досвіду, золоті та мідні монети, артефакти",
                     goal="Участь у командному проекті для отримання досвіду та Золотих Монет",
                 ),
@@ -151,6 +156,7 @@ async def seed_quests():
                     name="Битва з міні-босом",
                     image_url="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/mini_boss.png",
                     description="Складання онлайн-іспиту для отримання артефакту",
+                    requirements="Необхідно мати середній рівень та попередньо отримати базові артефакти.",
                     award="артефакти",
                     goal="Складання онлайн-іспиту для отримання артефакту",
                 ),
@@ -215,7 +221,7 @@ async def seed_requirements():
             if not quests:
                 raise RuntimeError("No quests available to reference in requirements")
 
-            requirements = [
+            requirements_table = [
                 Requirement(
                     id=uuid.uuid4(),
                     description="Завершити перший рівень",
@@ -228,7 +234,7 @@ async def seed_requirements():
                 ),
                 # Add more requirements as needed
             ]
-            session.add_all(requirements)
+            session.add_all(requirements_table)
         await session.commit()
 
 

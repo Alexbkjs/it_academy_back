@@ -122,6 +122,12 @@ async def get_quests(db: AsyncSession, skip: int = 0, limit: int = 10):
     return result.scalars().all()
 
 
+# Function to retrieve one quest by ID
+async def get_quest_by_id(db: AsyncSession, quest_id: UUID):
+    result = await db.execute(select(QuestModel).where(QuestModel.id == quest_id))
+    return result.scalar_one_or_none()  # Returns the quest or None if not found
+
+
 async def assign_initial_quests(db: AsyncSession, user_id: UUID):
     """
     Assign 4 quests to a new user, with 2 being blocked and 2 being active.

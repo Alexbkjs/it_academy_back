@@ -65,10 +65,12 @@ class Quest(Base):
     description = Column(String, default="")
     award = Column(String, default="")
     goal = Column(String, default="")
+    requirements = Column(String, default="")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
+    
 
-    requirements = relationship("Requirement", back_populates="quest")
+    requirements_table = relationship("Requirement", back_populates="quest")
     rewards = relationship("Reward", back_populates="quest")
     quest_progress = relationship("UserQuestProgress", back_populates="quest")
 
@@ -125,7 +127,7 @@ class UserQuestProgress(Base):
 
 
 class Requirement(Base):
-    __tablename__ = "requirements"
+    __tablename__ = "requirements_table"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     description = Column(String, nullable=False)
@@ -133,7 +135,7 @@ class Requirement(Base):
         UUID(as_uuid=True), ForeignKey("quests.id"), nullable=False
     )  # Corrected ForeignKey
 
-    quest = relationship("Quest", back_populates="requirements")
+    quest = relationship("Quest", back_populates="requirements_table")
 
 
 class Reward(Base):

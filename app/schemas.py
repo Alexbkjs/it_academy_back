@@ -23,6 +23,7 @@ class QuestBase(BaseModel):
     description: Optional[str] = None
     award: Optional[str] = None
     goal: Optional[str] = None
+    requirements: Optional[str] = None
 
 
 class Quest(QuestBase):
