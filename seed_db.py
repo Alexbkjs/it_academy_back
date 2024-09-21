@@ -60,7 +60,7 @@ async def is_database_empty():
 async def create_tables():
     async with async_engine.begin() as conn:
         # Drop all tables (for development/testing purposes, remove in production)
-        await conn.run_sync(Base.metadata.drop_all)
+        # await conn.run_sync(Base.metadata.drop_all)
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
 
