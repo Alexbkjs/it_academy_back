@@ -42,6 +42,20 @@ AsyncSessionLocal = sessionmaker(
 )
 
 
+# Function to check if the database is empty
+async def is_database_empty():
+    async with AsyncSessionLocal() as session:
+        # Check if any data exists in the User or Quest tables
+        result = await session.execute(select(User).limit(1))
+        user_exists = result.scalars().first()
+
+        result = await session.execute(select(Quest).limit(1))
+        quest_exists = result.scalars().first()
+
+        # If both are empty, the database is considered empty
+        return not user_exists and not quest_exists
+
+
 # Async function to create the tables
 async def create_tables():
     async with async_engine.begin() as conn:
@@ -51,6 +65,7 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 
+# Used for mocking user profiles
 async def fetch_random_user():
     """Fetch random user data from https://randomuser.me/api."""
     async with httpx.AsyncClient() as client:
@@ -63,6 +78,40 @@ async def fetch_random_user():
                 "image_url": data["picture"]["large"],
             }
         return None
+
+# Example: Seeding Users with Raw SQL
+
+# async def seed_users():
+#     async with AsyncSessionLocal() as session:
+#         async with session.begin():
+#             users_data = []
+
+#             for _ in range(14):  # Generate 14 users
+#                 random_user = await fetch_random_user()
+#                 if random_user:
+#                     user_data = {
+#                         "id": str(uuid.uuid4()),  # Generate UUID for the user
+#                         "telegram_id": random.randint(100000000, 999999999),  # Random telegram ID
+#                         "first_name": random_user["first_name"],
+#                         "last_name": random_user["last_name"],
+#                     }
+#                     users_data.append(user_data)
+
+#             # Insert users using raw SQL
+#             insert_sql = """
+#             INSERT INTO users (
+#                 id, telegram_id, first_name, last_name
+#             ) 
+#             VALUES (
+#                 :id, :telegram_id, :first_name, :last_name
+#             )
+#             """
+
+#             for user in users_data:
+#                 await session.execute(insert_sql, user)
+
+#         # Commit the transaction
+#         await session.commit()
 
 
 async def seed_users():
@@ -100,6 +149,9 @@ async def seed_users():
 
         # Commit the session
         await session.commit()
+
+
+
 
 
 async def seed_quests():
@@ -306,14 +358,22 @@ async def seed_user_quest_progress():
         await session.commit()
 
 
+# Seeding logic
 async def main():
+    # Create tables first
     await create_tables()
-    await seed_users()
-    await seed_quests()
-    await seed_achievements()
-    await seed_requirements()
-    await seed_rewards()
-    await seed_user_quest_progress()
+
+    # Check if the database is empty
+    if await is_database_empty():
+        print("Database is empty, performing seeding...")
+        await seed_users()
+        await seed_quests()
+        await seed_achievements()
+        await seed_requirements()
+        await seed_rewards()
+        await seed_user_quest_progress()
+    else:
+        print("Database is not empty, skipping seeding.")
 
 
 if __name__ == "__main__":
