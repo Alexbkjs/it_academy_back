@@ -162,7 +162,7 @@ Once Docker Compose starts the services, you should be able to access the applic
 For example, if the app is running on port 9000(you will get an error even if you try to open :
 
 ```bash
-http://localhost:9000
+http://localhost:9000/docs
 ```
 #### 5.1 To create a connection to database and verify the present data I am using Database Client JDBC (by Weijan Chen) VS Code extension. To create a connection to it, use the data from .env file.
 
