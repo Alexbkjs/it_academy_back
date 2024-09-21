@@ -1,6 +1,6 @@
-# 🚀 Backend FastAPI with PostgreSQL and SQLAlchemy
+# 🚀 Backend FastAPI with PostgreSQL, SQLAlchemy, Alembic, Docker and Docker Compose.
 
-Backend built with **FastAPI**, **PostgreSQL**, and **SQLAlchemy**. This project serves as a foundation for modern web applications and APIs.
+Backend built with **FastAPI**, **PostgreSQL**, **SQLAlchemy** and **Docker**. This project serves as a foundation for modern web applications and APIs.
 
 ## 🛠️ Features
 
@@ -8,23 +8,81 @@ Backend built with **FastAPI**, **PostgreSQL**, and **SQLAlchemy**. This project
 - **PostgreSQL**: Powerful, open-source relational database.
 - **SQLAlchemy**: SQL toolkit and Object-Relational Mapping (ORM) library for Python.
 - **Alembic**: Database migrations tool for SQLAlchemy.
+- **Docker**: Streamlines deployment by packaging applications into portable containers, ensuring consistency across environments.
+- **Docker Compose**: Simplifies multi-container orchestration with a single configuration file, managing services like databases and APIs efficiently.
 
 ## 📝 Prerequisites
 
-Before setting up the project, ensure you have the following installed:
+The backend was tested with the following front end version of the application: https://github.com/UPCoD-UNKD/it-academy-rpg-front/tree/OLE-21-app-loading-page
 
-- **Python 3.8+**
-- **PostgreSQL**
-- **Git**
+It is expected that this version or any other compatible with it, making requests to the backend and the requests are not intercepted by Mock Service Worker(msw).
 
-## 📦 Installation and Setup
+You can achive it by
+
+- setting the variable VITE_BASE_API_URL in .env(front end side) to the HTTPS address of your back-end
+- make sure that either variable VITE_ENABLE_MSW=false in .env(front-end side) or msw handlers were removed from /src/mocks/handlers/index.ts
+
+For example, by removing "...userHandlers" from:
+
+```bash
+export const handlers = [...userHandlers, ...questsHandlers, ...avatarsHandlers];
+```
+
+quests and avatars routes will still be intercepted and use the data from front-end mock database, while user routes(since there are no handlers(even with enabled msw), will go to external db for data).
+
+To the the URL, your backend end should be exposed and reachable via HTTPS from the Internet
+You can achive it by running:
+
+```bash
+ssh -R replaceWithYourSubdomain:80:localhost:9000 serveo.net
+```
+
+Received link(e.g. https://someSubdomain.serveo.net) use as VITE_BASE_API_URL on front end side in .env file.
+
+The same can be applied to expose your front end application to receive HTTPS URL which can be used to set it in BotFather so your bot is connected to the correct URL of your front end application.
+Replaced the port to port of your front-end application.
+
+```bash
+ssh -R replaceWithYourAnotherSubdomain:80:localhost:5173 serveo.net
+```
+
+A quick recap on setting front-end up:
+
+- Clone the Repository and Navigate to the Project Directory:
+
+```bash
+git clone https://github.com/UPCoD-UNKD/it-academy-rpg-front.git -b OLE-21-app-loading-page
+cd it-academy-rpg-front
+```
+
+- Install Dependencies
+
+```bash
+npm install
+```
+
+- Start the Development Server:
+
+```bash
+npm run dev
+```
+
+- Expose the Development Server:
+
+```bash
+ssh -R yourSubdomain:80:localhost:5173 serveo.net
+```
+
+P.S. Docker or Docker Desktop should be installed on your machine as well to proceed further.
+
+## 📦 Installation and Setup of the back end
 
 Follow these steps to clone the repository and set up the project locally.
 
-### 1. Clone the Repository
+### 1. Clone the Branch
 
 ```bash
-git clone https://github.com/UPCoD-UNKD/it-academy-rpg-back.git
+git clone https://github.com/UPCoD-UNKD/it-academy-rpg-back.git -b front-back_connection_attempt
 cd it-academy-rpg-back
 ```
 
@@ -44,70 +102,104 @@ python -m venv venv
 .\venv\Scripts\activate
 ```
 
-### 3. Install Dependencies
+### 3. Check for Environment Variables(especially Bot Token)
 
 ```bash
-pip install -r requirements.txt
+cp .env.example .env
 ```
 
-### 4. Set Up the PostgreSQL Database
+### 4. Build and Start Docker Services
 
-- #### 4.1. Create a PostgreSQL database:
+Once you have the repository cloned and the .env file in place, you can proceed to build and start your services with Docker Compose.
+
+- Build the Containers (if it’s the first time or if you need to rebuild):
 
 ```bash
-createdb your_database_name
+docker-compose up --build
 ```
 
-- #### 4.2. Update the Database Connection Settings:
-  Update the .env file with your PostgreSQL credentials:
+This will build and start the containers based on the docker-compose.yml file.
+
+If you’ve already built the containers and just want to start them:
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://username:password@localhost:5432/your_database_name
-
+docker-compose up
 ```
-- #### 4.3. Create an initial “alembic” migration:
-  
+
+#### 4.1. Database Migrations and Database seeding is handled in docker-compose.yml
 
 ```bash
-alembic init alembic 
-
-```
-- #### 4.4. Replace the content of alembic/env.py with content in w_alembic_custom_config/env.py:
- 
-
-```bash
-
-
-```
-- #### 4.4. Initial database setup:
-  
-
-```bash
-alembic revision --message "Initial database setup"
+bash -c "python wait_for_db.py && python seed_db.py && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 9000"
 
 ```
 
-#### 5. Apply Database Migrations
+Otherwise:
+
+#### 4.2. Run Database Migrations (if applicable)
+
+If your project uses a database and includes migration scripts (like Alembic for Python), you’ll likely need to run them after the containers start to make sure the database schema is up to date.
+
+For example, with Alembic, you would use:
 
 ```bash
-alembic upgrade head
+docker-compose exec <service-name> alembic upgrade head
 ```
-- #### 5.1. Filling the Database:  
+
+Make sure to replace <service-name> with the appropriate service name, typically something like app or web.
+
+#### 4.3. Seed the Database (if needed)
+
+If your project includes a database seeding script, you’ll want to run that to populate the database with initial data. This could be automated in the Docker Compose setup, but if not, you can run it manually:
 
 ```bash
-python3 seed_db_with_related_v2.py
-
+docker-compose exec <service-name> python path/to/seed_script.py
 ```
 
-#### 6. Run the Application
+### 5. Access the Running Application
+
+Once Docker Compose starts the services, you should be able to access the application. Depending on the setup, you can usually reach the app on localhost (or 0.0.0.0) at the defined port in your docker-compose.yml file.
+
+For example, if the app is running on port 9000:
 
 ```bash
-uvicorn main:app --reload
+http://localhost:9000
 ```
 
-The API will be available at http://127.0.0.1:8000.
+### 6. Working with the Code
 
+Now that everything is up and running:
 
+- Edit the code locally: You can work on the code within your development environment. If Docker Compose is configured properly, code changes should automatically reflect in the container, especially if you're using volumes in the docker-compose.yml like this:
+
+```bash
+volumes:
+  - .:/app
+```
+
+- Restart Containers (if needed): Sometimes, especially after large changes, you might need to restart the containers:
+
+```bash
+docker-compose down
+docker-compose up
+```
+
+#### 7. Push Changes to the Remote Repository
+
+Once you have made and tested your changes, you can commit and push them to the remote repository:
+
+```bash
+git add .
+git commit -m "Your commit message"
+git push origin <branch-name>
+```
+
+#### 8. Push Changes to the Remote Repository
+
+When you’re done working on the project, you can stop the running containers:
+
+```bash
+docker-compose down
+```
 
 ## ✅ Running Tests
 
@@ -137,3 +229,5 @@ This project is licensed under the Apache License. See the LICENSE file for more
 - PostgreSQL
 - SQLAlchemy
 - Alembic
+- Docker
+- Docker Compose

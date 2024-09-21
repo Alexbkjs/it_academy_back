@@ -29,7 +29,7 @@ async def create_new_quest(quest: QuestSchema, db: AsyncSession = Depends(get_db
 
 
 # Endpoint to retrieve a list of quests with optional pagination
-@router.get("/quests/")
+@router.get("/quests")
 async def read_quests(
     db: AsyncSession = Depends(get_db), skip: int = 0, limit: int = 10
 ):
