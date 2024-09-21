@@ -36,7 +36,6 @@ You can achive it by running:
 ```bash
 ssh -R replaceWithYourSubdomain:80:localhost:9000 serveo.net
 ```
-
 Received link(e.g. https://someSubdomain.serveo.net) use as VITE_BASE_API_URL on front end side in .env file.
 
 The same can be applied to expose your front end application to receive HTTPS URL which can be used to set it in BotFather so your bot is connected to the correct URL of your front end application.
@@ -67,13 +66,14 @@ npm install
 npm run dev
 ```
 
-- Expose the Development Server:
-
+- Expose the Development Server():
+In new terminal(Ctrl + Shift + ` in VS Code), run:
 ```bash
 ssh -R yourSubdomain:80:localhost:5173 serveo.net
 ```
+Be aware that since it is a free solution from time to time you will get ssh: connect to host serveo.net port 22: Connection refused, can be fixed by running the command once again or wait for a couple of minutes or hours/days) or use alternative(ngrok, localtunnel).
 
-P.S. Docker or Docker Desktop should be installed on your machine as well to proceed further.
+P.S. Docker or Docker Desktop(Windows) should be installed on your machine as well to proceed further.
 
 ## 📦 Installation and Setup of the back end
 
