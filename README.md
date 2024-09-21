@@ -30,13 +30,13 @@ export const handlers = [...userHandlers, ...questsHandlers, ...avatarsHandlers]
 
 quests and avatars routes will still be intercepted and use the data from front-end mock database, while user routes(since there are no handlers(even with enabled msw), will go to external db for data).
 
-To the the URL, your backend end should be exposed and reachable via HTTPS from the Internet
+To the the URL, your backend end should be exposed and reachable via HTTPS from the Internet.
 You can achive it by running:
 
 ```bash
 ssh -R replaceWithYourSubdomain:80:localhost:9000 serveo.net
 ```
-Received link(e.g. https://someSubdomain.serveo.net) use as VITE_BASE_API_URL on front end side in .env file.
+Use received link(e.g. https://someSubdomain.serveo.net) as VITE_BASE_API_URL on front end side in .env file.
 
 The same can be applied to expose your front end application to receive HTTPS URL which can be used to set it in BotFather so your bot is connected to the correct URL of your front end application.
 Replaced the port to port of your front-end application.
@@ -105,7 +105,7 @@ python -m venv venv
 ### 3. Check for Environment Variables(especially Bot Token)
 
 ```bash
-cp .env.example .env
+cp .env_example .env
 ```
 
 ### 4. Build and Start Docker Services
@@ -159,11 +159,21 @@ docker-compose exec <service-name> python path/to/seed_script.py
 
 Once Docker Compose starts the services, you should be able to access the application. Depending on the setup, you can usually reach the app on localhost (or 0.0.0.0) at the defined port in your docker-compose.yml file.
 
-For example, if the app is running on port 9000:
+For example, if the app is running on port 9000(you will get an error even if you try to open :
 
 ```bash
 http://localhost:9000
 ```
+#### 5.1 To create a connection to database and verify the present data I am using Database Client JDBC (by Weijan Chen) VS Code extension. To create a connection to it, use the data from .env file.
+
+Up to this moment, if the app is working and you forgot to modify the .env file and disable msw on front end, that is because mocking data. If so, expose your back end with ssh -R someDomain:80:localhost:9000 serveo.net and paste https://someDomain.serveo.net instead of https://example.com keeping the path /api/v1, so you have VITE_BASE_API_URL=https://someDomain.serveo.net/api/v1. 
+
+Disable msw by setting VITE_ENABLE_MSW=false, save the file.
+
+At this moment, app will automatically reload and the request will go through to back end app. You can verify it by seeing user with your details in database > Tables > users. As well as, default user_achievements and user_quest_progress field during user registration. Keep in mind, that if you decide to remove your user profile from db directly, you should remove the fields related to the user from those tables first as they are connected to the user and prevent the action. You can locate the needed fields by user_id field.
+
+To remove the user from GUI: on profile page > gears icon. It will remove the user from db as well.
+
 
 ### 6. Working with the Code
 
