@@ -26,7 +26,7 @@ async def wait_for_db():
             )
             await conn.close()
             break
-        except (asyncpg.ConnectionError, asyncpg.InvalidPasswordError) as e:
+        except Exception as e:
             print("Waiting for PostgreSQL to be ready...")
             await asyncio.sleep(2)
 
