@@ -41,9 +41,6 @@ class User(Base):
     points = Column(Integer, default=100)
     coins = Column(Integer, default=1000)
     role = Column(PyEnum(UserRole), nullable=True)  # Use Enum as the column type
-    language_code = Column(String, nullable=True)
-    is_premium = Column(Boolean, nullable=True)
-    allows_write_to_pm = Column(Boolean, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
 
@@ -53,6 +50,7 @@ class User(Base):
     quest_progress = relationship(
         "UserQuestProgress", cascade="all, delete", back_populates="user"
     )
+
 
 
 class Quest(Base):

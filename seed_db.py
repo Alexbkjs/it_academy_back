@@ -79,41 +79,6 @@ async def fetch_random_user():
             }
         return None
 
-# Example: Seeding Users with Raw SQL
-
-# async def seed_users():
-#     async with AsyncSessionLocal() as session:
-#         async with session.begin():
-#             users_data = []
-
-#             for _ in range(14):  # Generate 14 users
-#                 random_user = await fetch_random_user()
-#                 if random_user:
-#                     user_data = {
-#                         "id": str(uuid.uuid4()),  # Generate UUID for the user
-#                         "telegram_id": random.randint(100000000, 999999999),  # Random telegram ID
-#                         "first_name": random_user["first_name"],
-#                         "last_name": random_user["last_name"],
-#                     }
-#                     users_data.append(user_data)
-
-#             # Insert users using raw SQL
-#             insert_sql = """
-#             INSERT INTO users (
-#                 id, telegram_id, first_name, last_name
-#             ) 
-#             VALUES (
-#                 :id, :telegram_id, :first_name, :last_name
-#             )
-#             """
-
-#             for user in users_data:
-#                 await session.execute(insert_sql, user)
-
-#         # Commit the transaction
-#         await session.commit()
-
-
 async def seed_users():
     async with AsyncSessionLocal() as session:
         async with session.begin():
@@ -137,10 +102,6 @@ async def seed_users():
                         points=random.randint(100, 500),  # Random points
                         coins=random.randint(1000, 10000),  # Random coins
                         image_url=random_user["image_url"],  # Profile image from API
-                        language_code="en",
-                        allows_write_to_pm=random.choice(
-                            [True, False]
-                        ),  # Random True/False for allows_write_to_pm
                     )
                     users.append(user)
 

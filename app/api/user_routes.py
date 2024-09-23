@@ -46,11 +46,7 @@ async def get_user_data(request: Request, db: AsyncSession = Depends(get_db)):
     user_data_str = validated_params.get("user", "")
     user_data = json.loads(user_data_str) if user_data_str else {}
 
-    user_data["telegram_id"] = user_data.pop("id")
-    user_data["is_premium"] = False
-    user_data["user_class"] = "Mage"
-
-    existing_user = await get_user_by_tID(db, user_data.get("telegram_id"))
+    existing_user = await get_user_by_tID(db, user_data.get("id"))
 
     if existing_user:
         user_data_response = {

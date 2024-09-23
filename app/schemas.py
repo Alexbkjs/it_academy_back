@@ -26,10 +26,10 @@ class QuestBase(BaseModel):
 
     name: str
     image_url: HttpUrl = Field(..., alias="imageUrl",  description="URL of the quest image")
-    description: str = None
-    award: str = None
-    goal: str = None
-    requirements: str = None
+    description: str
+    award: str
+    goal: str
+    requirements: str
 
     class Config:
         from_attributes = True  # Enables Pydantic to work with ORM objects directly
@@ -145,9 +145,6 @@ class UserBase(BaseModel):
     level: int = 1
     points: int = 100
     coins: int = 1000
-    language_code: Optional[str] = None
-    is_premium: Optional[bool] = None
-    allows_write_to_pm: Optional[bool] = None
     role: Optional[UserRole] = None
 
     quest_progress: List[UserQuestProgress] = []  # Nested UserQuestProgress

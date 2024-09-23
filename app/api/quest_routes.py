@@ -50,24 +50,6 @@ async def read_quests(
     return QuestsResponse(quests=quests, total=total_count)
 
 
-
-# @router.get("/quests/{quest_id}", response_model=QuestSchema)
-# async def read_quest(quest_id: UUID, db: AsyncSession = Depends(get_db)):
-#     """
-#     Retrieve a single quest by its ID from the database.
-
-#     - **quest_id**: The ID of the quest to retrieve.
-#     - **db**: Database session dependency, automatically provided by FastAPI.
-
-#     Returns a JSON object representing the quest.
-#     """
-#     quest = await get_quest_by_id(db, quest_id)
-#     if quest is None:
-#         raise HTTPException(status_code=404, detail="Quest not found")
-
-#     return quest
-
-
 @router.get("/quests/{quest_id}", response_model=QuestSchema)
 async def read_quest(
     quest_id: UUID,  # The ID of the quest to retrieve
