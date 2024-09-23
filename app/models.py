@@ -17,7 +17,6 @@ from uuid import uuid4
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
 
-
 class UserRole(Enum):
     adventurer = "adventurer"
     avatar = "avatar"
@@ -73,7 +72,6 @@ class Quest(Base):
     requirements_table = relationship("Requirement", back_populates="quest")
     rewards = relationship("Reward", back_populates="quest")
     quest_progress = relationship("UserQuestProgress", back_populates="quest")
-
 
 class Achievement(Base):
     __tablename__ = "achievements"

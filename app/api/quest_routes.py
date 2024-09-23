@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas import Quest as QuestSchema
+from app.schemas import Quest as QuestSchema, QuestsResponse
 from app.crud import create_quest, get_quests, get_quest_by_id
 from app.database import get_db
 from uuid import UUID
@@ -29,7 +29,7 @@ async def create_new_quest(quest: QuestSchema, db: AsyncSession = Depends(get_db
 
 
 # Endpoint to retrieve a list of quests with optional pagination
-@router.get("/quests")
+@router.get("/quests", response_model=QuestsResponse)
 async def read_quests(
     db: AsyncSession = Depends(get_db), skip: int = 0, limit: int = 10
 ):
@@ -40,58 +40,53 @@ async def read_quests(
     - **skip**: Number of quests to skip (for pagination).
     - **limit**: Maximum number of quests to return.
 
-    Returns a JSON object with a list of quests under the 'quests' key.
+    Returns a JSON object with a list of quests under the 'quests' key in camelCase format.
+    The quests are returned as a list of `QuestBase` objects.
     """
-    quests_data = await get_quests(db, skip, limit)
-
-    # Directly constructing the response with camelCase keys
-    transformed_quests = [
-        {
-            "id": str(quest.id),
-            "name": quest.name,
-            "description": quest.description,
-            "goal": quest.goal,
-            "award": quest.award,
-            "imageUrl": quest.image_url,
-            "createdAt": quest.created_at,
-            "updatedAt": quest.updated_at,
-        }
-        for quest in quests_data
-    ]
-
-    return {"quests": transformed_quests}
+    # Fetch quests from the database along with the total count for pagination
+    quests, total_count = await get_quests(db, skip, limit)
+    
+    # Return a response model containing the list of quests and the total count
+    return QuestsResponse(quests=quests, total=total_count)
 
 
-@router.get("/quests/{quest_id}")
-async def read_quest(quest_id: UUID, db: AsyncSession = Depends(get_db)):
+
+# @router.get("/quests/{quest_id}", response_model=QuestSchema)
+# async def read_quest(quest_id: UUID, db: AsyncSession = Depends(get_db)):
+#     """
+#     Retrieve a single quest by its ID from the database.
+
+#     - **quest_id**: The ID of the quest to retrieve.
+#     - **db**: Database session dependency, automatically provided by FastAPI.
+
+#     Returns a JSON object representing the quest.
+#     """
+#     quest = await get_quest_by_id(db, quest_id)
+#     if quest is None:
+#         raise HTTPException(status_code=404, detail="Quest not found")
+
+#     return quest
+
+
+@router.get("/quests/{quest_id}", response_model=QuestSchema)
+async def read_quest(
+    quest_id: UUID,  # The ID of the quest to retrieve
+    db: AsyncSession = Depends(get_db)  # Dependency injection for the database session
+):
     """
     Retrieve a single quest by its ID from the database.
 
     - **quest_id**: The ID of the quest to retrieve.
     - **db**: Database session dependency, automatically provided by FastAPI.
 
-    Returns a JSON object representing the quest.
+    Returns a JSON object representing the quest. If the quest is not found, raises a 404 error.
     """
-    quest_data = await get_quest_by_id(db, quest_id)
+    # Fetch the quest from the database using the provided quest_id
+    quest = await get_quest_by_id(db, quest_id)
 
-    if quest_data is None:
+    # Check if the quest was found; if not, raise a 404 error
+    if quest is None:
         raise HTTPException(status_code=404, detail="Quest not found")
 
-    # Transform the quest data to a dictionary with camelCase keys
-    transformed_quest = {
-        "id": str(quest_data.id),
-        "name": quest_data.name,
-        "description": quest_data.description,
-        "goal": quest_data.goal,
-        "award": quest_data.award,
-        "requirements": quest_data.requirements,
-        "imageUrl": quest_data.image_url,  # CamelCase key
-        "createdAt": (
-            quest_data.created_at.isoformat() if quest_data.created_at else None
-        ),
-        "updatedAt": (
-            quest_data.updated_at.isoformat() if quest_data.updated_at else None
-        ),
-    }
-
-    return transformed_quest
+    # Return the retrieved quest as a QuestSchema
+    return quest

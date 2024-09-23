@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from pydantic import BaseModel, Field, HttpUrl
+from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
@@ -17,27 +17,46 @@ class RoleSelection(BaseModel):
 
 
 # Quest schema
+
+# Example Use Cases
+# Creating a New Quest: Use QuestBase for the request body.
+# Retrieving Quest Details: Use Quest for the response, which includes the additional fields.
+
 class QuestBase(BaseModel):
+
     name: str
-    image_url: Optional[str] = None
-    description: Optional[str] = None
-    award: Optional[str] = None
-    goal: Optional[str] = None
-    requirements: Optional[str] = None
+    image_url: HttpUrl = Field(..., alias="imageUrl",  description="URL of the quest image")
+    description: str = None
+    award: str = None
+    goal: str = None
+    requirements: str = None
+
+    class Config:
+        from_attributes = True  # Enables Pydantic to work with ORM objects directly
+        populate_by_name = True  # Allow using field names for population
 
 
 class Quest(QuestBase):
     id: UUID
-    created_at: datetime
-    updated_at: Optional[datetime] = None
+    created_at: datetime = Field(None, alias="createdAt")
+    updated_at: Optional[datetime] = Field(None, alias="updatedAt")
 
     class Config:
         from_attributes = True
+        populate_by_name = True  # Allow using field names for population
+
+
+class QuestsResponse(BaseModel):
+    quests: List[Quest]
+    total: int  # Total number of quests available
+
 
 
 # Requirement schema
 class RequirementBase(BaseModel):
     description: str
+    class Config:
+        from_attributes = True
 
 
 class Requirement(RequirementBase):
