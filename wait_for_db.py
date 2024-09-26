@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 async def wait_for_db():
+    print("hufjkldbhfdhbsfhj")
     while True:
         try:
             # Retrieve database connection parameters from environment variables
