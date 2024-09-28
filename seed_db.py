@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
@@ -102,6 +103,8 @@ async def seed_users():
                         points=random.randint(100, 500),  # Random points
                         coins=random.randint(1000, 10000),  # Random coins
                         image_url=random_user["image_url"],  # Profile image from API
+                        updated_at=datetime.utcnow() - timedelta(days=random.randint(1, 200)) # Random date of user data update
+
                     )
                     users.append(user)
 
