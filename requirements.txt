@@ -8,3 +8,4 @@ alembic                 # A lightweight database migration tool for use with SQL
 pytest                  # A testing framework for Python that makes it easy to write simple and scalable test cases, widely used for testing code.
 httpx                   # An async HTTP client for Python 3, allowing for high-performance HTTP requests, useful for making API calls in an asynchronous manner.
 pytest-asyncio          # A plugin for handling asynchronous tests with pytest
+python-telegram-bot==21.5 # library is used to create links to user profile photos

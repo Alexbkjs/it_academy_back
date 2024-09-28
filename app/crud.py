@@ -1,8 +1,8 @@
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy import func
-
 
 from app.models import (
     User as UserModel,
@@ -12,12 +12,14 @@ from app.models import (
     UserAchievementModel,
 )
 from app.schemas import User as UserSchema, Quest as QuestSchema
+from app.utils.photo_users import get_user_profile_photo_link
 from uuid import UUID
 
 from sqlalchemy.orm import (
     selectinload,
     joinedload,
 )  # Import selectinload for eager loading of related rows
+
 
 # Function to delete a user by their ID (Telegram_id) in a cascade manner
 
@@ -53,6 +55,9 @@ async def create_user(db: AsyncSession, user: UserSchema) -> UserModel:
 
     Returns the created user instance.
     """
+    image_url = await get_user_profile_photo_link(
+        user.telegram_id
+    )  # get link user photo
     # Create a new User model instance, including the selected role
 
     new_user = UserModel(**user.dict())  # Unpack user data into UserModel
@@ -215,45 +220,56 @@ async def assign_initial_achievements(db: AsyncSession, user_id: UUID):
     await db.commit()
 
 
-async def get_data_leaderboard(telegram_id: int, limit_lead: int, db: AsyncSession):
-    # Query to select the top "limit_lead" users ordered by their points in descending order
-    query_top = select(UserModel).order_by(desc(UserModel.points))
-    # Query to select the user based on telegram_id
-    query_user = select(UserModel).where(UserModel.telegram_id == telegram_id)
+async def get_data_leaderboard(telegram_id: int, days: int, db: AsyncSession):
+    limit = 15
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    # Query to select the top users ordered by points in descending order within the time frame
+    query_top = (
+        select(UserModel)
+        .where(UserModel.updated_at >= cutoff_date)
+        .order_by(desc(UserModel.points))
+    )
+    # Query to select the specific user based on telegram_id
+    query_user = select(UserModel).order_by(desc(UserModel.points))
     result_top = await db.execute(
         query_top
     )  # Execute the top users query asynchronously
     result_user = await db.execute(query_user)  # Execute the user query asynchronously
+
     all_users = result_top.scalars().all()
+    user_info = result_user.scalars().all()
+    users_list = []
+    current_user = None
     for index, user in enumerate(all_users):
-        if user.telegram_id == telegram_id:
-            user_position: int = index + 1  # Позиції починаються з 1
+        if index == limit:
+            break
+        user_data = {
+            "id": str(user.telegram_id),
+            "firstName": user.first_name,
+            "lastName": user.last_name,
+            "points": user.points,
+            "position": index + 1,
+            "profileImage": str(user.image_url),
+            "isCurrentUser": user.telegram_id == telegram_id,
+        }
+        users_list.append(user_data)
+        if index == limit:
             break
 
-    # Create a list of top users' dictionaries from the result, or an empty list if no results
-    users_list = (
-        [
-            {**row.__dict__, "position": index + 1}
-            for index, row in enumerate(all_users)
-        ][:limit_lead]
-        if all_users
-        else []
-    )
-
-    # Get the user information for the specified telegram_id, or None if not found
-    user_info = result_user.scalars().first()
-
-    if user_info:  # Check if the user exists in the database
-        user_dict = {
-            **user_info.__dict__,
-            "position": user_position,
-        }  # Convert user_info to dictionary format
-
-        # Check if the user is already in the top users list
-        if user_dict not in users_list:
-            # If the user is not in the list and the list is already full ("limit_lead" users)
-            if len(users_list) == limit_lead:
-                users_list.pop()  # Remove the last user from the list to make space for a new one
-
-            users_list.append(user_dict)  # Append the new user to the users list
-    return users_list
+    for index, user in enumerate(user_info):
+        if user.telegram_id == telegram_id:
+            current_user = {
+                "id": str(user.telegram_id),
+                "firstName": user.first_name,
+                "lastName": user.last_name,
+                "points": user.points,
+                "position": index + 1,
+                "profileImage": user.image_url,
+                "isCurrentUser": True,
+            }
+            break
+    return {
+        "topUsers": users_list[:3],
+        "restTopUsers": users_list[3:],
+        "currentUser": current_user,
+    }
