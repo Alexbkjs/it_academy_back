@@ -8,9 +8,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data # Persist data
-
+    # volumes:
+    #   - postgres_data:/var/lib/postgresql/data 
+      
+    # In development, it's best to avoid persistent volumes to ensure a fresh database state for every developer, using migrations and seed data to maintain consistency.
+    # In production, you should use persistent volumes for database data, automate migrations, and implement proper backup and rollback mechanisms.
+    
   app:
     build: .
     command: bash -c "python wait_for_db.py && alembic upgrade head && python seed_db.py && uvicorn main:app --host 0.0.0.0 --port 9000 --reload"
@@ -28,5 +31,3 @@ services:
       timeout: 5s
       retries: 5
 
-volumes:
-  postgres_data:
