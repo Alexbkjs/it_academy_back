@@ -4,7 +4,6 @@ import urllib.parse
 import json
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
-import time
 
 from dotenv import load_dotenv  # For loading environment variables from .env file
 import os  # For accessing environment variables
@@ -29,9 +28,6 @@ def validate_init_data(init_data_raw: str, bot_token: str) -> dict:
         user_data_str = urllib.parse.unquote(
             user_data_str
         )  # URL-decode the user data string
-        user_data = (
-            json.loads(user_data_str) if user_data_str else {}
-        )  # Parse JSON data
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid user data format")
 
@@ -66,7 +62,12 @@ def validate_init_data(init_data_raw: str, bot_token: str) -> dict:
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Exclude all paths starting with /docs and /openapi.json from the authorization check
-        if request.url.path.startswith("/docs") or request.url.path == "/openapi.json":
+        if (
+            request.url.path.startswith("/docs")
+            or request.url.path == "/openapi.json"
+            or request.url.path == "/health"
+            or request.url.path == "/favicon.ico"
+        ):
             # Directly proceed without checking authorization
             return await call_next(request)
 

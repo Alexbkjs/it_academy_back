@@ -79,6 +79,7 @@ async def fetch_random_user():
             }
         return None
 
+
 async def seed_users():
     async with AsyncSessionLocal() as session:
         async with session.begin():
@@ -110,9 +111,6 @@ async def seed_users():
 
         # Commit the session
         await session.commit()
-
-
-
 
 
 async def seed_quests():

@@ -3,7 +3,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app  # Import your FastAPI app
-import json
 import urllib.parse
 
 

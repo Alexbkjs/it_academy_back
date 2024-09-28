@@ -2,7 +2,6 @@ from fastapi import (
     APIRouter,
     Depends,
     Request,
-    status,
 )  # FastAPI components for routing and error handling
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
