@@ -65,9 +65,6 @@ async def create_user(db: AsyncSession, user: UserSchema) -> UserModel:
         last_name=user.last_name,
         username=user.username,
         image_url=image_url,
-        language_code=user.language_code,
-        is_premium=user.is_premium,
-        allows_write_to_pm=user.allows_write_to_pm,
         role=user.role,  # Include the selected role
     )
 
