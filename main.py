@@ -36,3 +36,8 @@ app.include_router(
 
 # Include the user routes from the leaderboard module under the /api prefix with the tag "leaderboard"
 app.include_router(leaderboard, prefix=api_prefix, tags=["leaderboard"])
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}

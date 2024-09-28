@@ -1,7 +1,6 @@
 # app/api/quest_routes.py
 
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas import Quest as QuestSchema, QuestsResponse
@@ -45,15 +44,18 @@ async def read_quests(
     """
     # Fetch quests from the database along with the total count for pagination
     quests, total_count = await get_quests(db, skip, limit)
-    
     # Return a response model containing the list of quests and the total count
-    return QuestsResponse(quests=quests, total=total_count)
+    return QuestsResponse(
+        message="List of quests fetched from the database.",
+        quests=quests,
+        total=total_count,
+    )
 
 
 @router.get("/quests/{quest_id}", response_model=QuestSchema)
 async def read_quest(
     quest_id: UUID,  # The ID of the quest to retrieve
-    db: AsyncSession = Depends(get_db)  # Dependency injection for the database session
+    db: AsyncSession = Depends(get_db),  # Dependency injection for the database session
 ):
     """
     Retrieve a single quest by its ID from the database.

@@ -1,9 +1,8 @@
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy import func
-
 
 from app.models import (
     User as UserModel,
@@ -16,7 +15,6 @@ from app.schemas import User as UserSchema, Quest as QuestSchema
 from app.utils.photo_users import get_user_profile_photo_link
 from uuid import UUID
 
-from sqlalchemy.future import select  # Import select for query building
 from sqlalchemy.orm import (
     selectinload,
     joinedload,
@@ -24,6 +22,8 @@ from sqlalchemy.orm import (
 
 
 # Function to delete a user by their ID (Telegram_id) in a cascade manner
+
+
 async def delete_user_by_id(db: AsyncSession, user_id: int):
     # Create a select query to find a user with the given ID and load related entities if necessary
     query = (
@@ -59,15 +59,8 @@ async def create_user(db: AsyncSession, user: UserSchema) -> UserModel:
         user.telegram_id
     )  # get link user photo
     # Create a new User model instance, including the selected role
-    new_user = UserModel(
-        telegram_id=user.telegram_id,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        username=user.username,
-        image_url=image_url,
-        role=user.role,  # Include the selected role
-    )
 
+    new_user = UserModel(**user.dict())  # Unpack user data into UserModel
     # Add the new User instance to the session
     db.add(new_user)
 
@@ -76,7 +69,6 @@ async def create_user(db: AsyncSession, user: UserSchema) -> UserModel:
 
     # Refresh the instance to load any database-generated fields like 'id'
     await db.refresh(new_user)
-
     return new_user
 
 
@@ -99,10 +91,21 @@ async def get_user_by_tID(db: AsyncSession, telegram_id: int):
     user = result.scalars().first()  # Get the first result (or None if no user found)
 
     # Convert the SQLAlchemy model instance to a dictionary before validating
-    user_dict = user.__dict__ if user else None
+    if user:
+        user_dict = vars(user)  # Get user fields without internal SQLAlchemy stuff
 
-    # Return the user as a UserSchema with loaded quests if found, otherwise None
-    return UserSchema.model_validate(user_dict) if user_dict else None
+        # Access and reverse the quest_progress list
+        if "quest_progress" in user_dict and user_dict["quest_progress"]:
+            quest_progress = user_dict["quest_progress"]
+
+            # Reverse the list without modifying the original (if immutability is needed)
+            quest_progress_reversed = quest_progress[::-1]
+
+            # Update the quest_progress field with the reversed list
+            user_dict["quest_progress"] = quest_progress_reversed
+
+        # Return the user as a UserSchema with loaded quests if found, otherwise None
+        return UserSchema.model_validate(user_dict) if user_dict else None
 
 
 # Function to create a new quest in the database
@@ -165,13 +168,13 @@ async def assign_initial_quests(db: AsyncSession, user_id: UUID):
 
     # Assign quests, with 2 blocked and 2 not blocked
     for idx, quest in enumerate(quests):
-        status = "blocked" if idx >= 2 else "active"
+        quest_status = "blocked" if idx >= 2 else "active"
         await db.execute(
             UserQuestProgressModel.__table__.insert().values(
                 user_id=user_id,
                 quest_id=quest.id,
-                status=status,
-                is_locked=status
+                status=quest_status,
+                is_locked=quest_status
                 == "blocked",  # Using is_locked to reflect blocked status
             )
         )
@@ -203,13 +206,13 @@ async def assign_initial_achievements(db: AsyncSession, user_id: UUID):
         )
     # Assign achievements, with 2 active and 2 blocked
     for idx, achievement in enumerate(achievements):
-        status = "blocked" if idx >= 2 else "active"
-        is_locked = False if status == "active" else True
+        achievement_status = "blocked" if idx >= 2 else "active"
+        is_locked = False if achievement_status == "active" else True
         await db.execute(
             UserAchievementModel.__table__.insert().values(
                 user_id=user_id,
                 achievement_id=achievement.id,
-                status=status,
+                status=achievement_status,
                 is_locked=is_locked,
             )
         )

@@ -1,8 +1,5 @@
 # Standard Library Imports
-import hashlib  # For hashing functions
-import hmac  # For HMAC (hash-based message authentication code)
 import json  # For JSON parsing
-import urllib.parse  # For URL parsing and decoding
 
 # Third-Party Imports
 from fastapi import (
@@ -10,22 +7,17 @@ from fastapi import (
     HTTPException,
     Depends,
     Request,
-    status,
 )  # FastAPI components for routing and error handling
-from pydantic import BaseModel  # Pydantic for data validation
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )  # SQLAlchemy for asynchronous database operations
-from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
 
 # Local Application Imports
 from app.schemas import (
-    User,
-    UserRole,
     UserBase,
-    UserQuestProgress,
     RoleSelection,
+    UserResponse,
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -40,197 +32,99 @@ router = APIRouter()  # Create an APIRouter instance for handling routes
 
 
 # Endpoint to verify initial data and handle user authentication
-@router.get("/user")
+@router.get("/user", response_model=UserResponse)
 async def get_user_data(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    Fetches user data from the database based on the Telegram ID.
+    Raises an exception if the user does not exist and prompts role selection.
+
+    - **request**: The HTTP request object containing validated params.
+    - **db**: AsyncSession for performing database operations.
+
+    Returns a dictionary containing the message and the user data if found.
+    Raises an HTTPException if the user is not found.
+    """
+
+    # Extract validated params from the request (e.g., from middleware)
     validated_params = request.state.validated_params
+
+    # Retrieve the 'user' data string from the validated params, if it exists
     user_data_str = validated_params.get("user", "")
+
+    # Parse the user data string into a dictionary, or use an empty dict if not found
     user_data = json.loads(user_data_str) if user_data_str else {}
 
+    # Attempt to fetch the existing user from the database using their Telegram ID
     existing_user = await get_user_by_tID(db, user_data.get("id"))
 
     if existing_user:
-        user_data_response = {
-            "id": str(existing_user.id),
-            "telegramId": existing_user.telegram_id,
-            "firstName": existing_user.first_name,
-            "lastName": existing_user.last_name,
-            "username": existing_user.username,
-            "role": existing_user.role,
-            "imageUrl": existing_user.image_url,
-            "level": existing_user.level,
-            "points": existing_user.points,
-            "coins": existing_user.coins,
-            "activeQuests": [
-                {
-                    "id": str(progress.quest.id),
-                    "name": progress.quest.name,
-                    "status": progress.status,
-                    "progress": progress.progress,
-                    "startedAt": progress.started_at,
-                    "completedAt": progress.completed_at,
-                    "isLocked": progress.is_locked,
-                    "quest": {
-                        "id": progress.quest.id,
-                        "name": progress.quest.name,
-                        "description": progress.quest.description,
-                        "goal": progress.quest.goal,
-                        "award": progress.quest.award,
-                        "imageUrl": progress.quest.image_url,
-                        "createdAt": progress.quest.created_at,
-                        "updatedAt": progress.quest.updated_at,
-                    },
-                }
-                for progress in existing_user.quest_progress
-            ],
-            "achievements": [
-                {
-                    "id": str(achievement.id),
-                    "name": achievement.achievement.name,
-                    "description": achievement.achievement.description,
-                    "imageUrl": achievement.achievement.image_url,
-                    "isLocked": achievement.is_locked,
-                }
-                for achievement in existing_user.achievements
-            ],
-        }
-
+        # If the user exists, return a success message along with their data
         return {
-            "redirect": "/profile",
-            "message": "User already exists, returning user data from database",
-            "user": user_data_response,
+            "message": "User data fetched from the database",
+            "user": existing_user,
         }
-
     else:
+        # If no user is found, raise an HTTP 401 error and request role selection
         raise HTTPException(
             status_code=401,
             detail="Please choose a role to complete your registration.",
         )
 
 
-@router.post("/user")
+@router.post("/user", response_model=UserResponse)
 async def create_user_after_role_selection(
     role_selection: RoleSelection,
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Creates a new user after role selection. Assigns initial quests and achievements
+    if the user doesn't exist. Prevents multiple user creation if the user already exists.
+
+    - **role_selection**: Contains the role selected by the user.
+    - **request**: The HTTP request, used to access validated params.
+    - **db**: AsyncSession for database operations.
+
+    Returns the created or existing user along with a message.
+    """
+    # Retrieve validated params from the request state
     validated_params = request.state.validated_params
+    # Extract the 'user' data as a string from validated params
     user_data_str = validated_params.get("user", "")
+    # Parse the user data string into a dictionary if it exists, else use an empty dict
     user_data = json.loads(user_data_str) if user_data_str else {}
 
+    # Replace 'id' with 'telegram_id' in user data to match the database field
     user_data["telegram_id"] = user_data.pop("id")
+    # Assign the selected role to the user data
     user_data["role"] = role_selection.role
 
+    # Check if a user with the provided Telegram ID already exists
     existing_user = await get_user_by_tID(db, user_data.get("telegram_id"))
-
     if existing_user:
-        user_data_response = {
-            "id": str(existing_user.id),
-            "telegramId": existing_user.telegram_id,
-            "firstName": existing_user.first_name,
-            "lastName": existing_user.last_name,
-            "username": existing_user.username,
-            "role": existing_user.role,
-            "imageUrl": existing_user.image_url,
-            "level": existing_user.level,
-            "points": existing_user.points,
-            "coins": existing_user.coins,
-            "activeQuests": [
-                {
-                    "id": str(progress.quest.id),
-                    "name": progress.quest.name,
-                    "status": progress.status,
-                    "progress": progress.progress,
-                    "startedAt": progress.started_at,
-                    "completedAt": progress.completed_at,
-                    "isLocked": progress.is_locked,
-                    "quest": {
-                        "id": progress.quest.id,
-                        "name": progress.quest.name,
-                        "description": progress.quest.description,
-                        "goal": progress.quest.goal,
-                        "award": progress.quest.award,
-                        "imageUrl": progress.quest.image_url,
-                        "createdAt": progress.quest.created_at,
-                        "updatedAt": progress.quest.updated_at,
-                    },
-                }
-                for progress in existing_user.quest_progress
-            ],
-            "achievements": [
-                {
-                    "id": str(achievement.id),
-                    "name": achievement.achievement.name,
-                    "description": achievement.achievement.description,
-                    "imageUrl": achievement.achievement.image_url,
-                    "isLocked": achievement.is_locked,
-                }
-                for achievement in existing_user.achievements
-            ],
-        }
-
+        # If the user already exists, return a message and the user data
         return {
-            "user": user_data_response,
-            "redirect": "/profile",
-            "message": "User already exists, preventing multiple user creation!",
+            "message": "Prevent multiple user creation, user already exists",
+            "user": existing_user,
         }
 
     else:
+        # If the user doesn't exist, create a new user using the provided data
         new_user = await create_user(db, UserBase(**user_data))
+
+        # Assign initial quests and achievements to the newly created user
         await assign_initial_quests(db, new_user.id)
         await assign_initial_achievements(db, new_user.id)
 
-        new_user_data = await get_user_by_tID(db, user_data.get("telegram_id"))
+        # Fetch the newly created user along with assigned data (quests, achievements)
+        new_user_with_assigned_data = await get_user_by_tID(
+            db, user_data.get("telegram_id")
+        )
 
-        user_data_response = {
-            "id": str(new_user_data.id),
-            "telegramId": new_user_data.telegram_id,
-            "firstName": new_user_data.first_name,
-            "lastName": new_user_data.last_name,
-            "username": new_user_data.username,
-            "role": new_user_data.role,
-            "imageUrl": "https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg",
-            "level": new_user_data.level,
-            "points": new_user_data.points,
-            "coins": new_user_data.coins,
-            "activeQuests": [
-                {
-                    "id": str(progress.quest.id),
-                    "name": progress.quest.name,
-                    "status": progress.status,
-                    "progress": progress.progress,
-                    "startedAt": progress.started_at,
-                    "completedAt": progress.completed_at,
-                    "isLocked": progress.is_locked,
-                    "quest": {
-                        "id": progress.quest.id,
-                        "name": progress.quest.name,
-                        "description": progress.quest.description,
-                        "goal": progress.quest.goal,
-                        "award": progress.quest.award,
-                        "imageUrl": progress.quest.image_url,
-                        "createdAt": progress.quest.created_at,
-                        "updatedAt": progress.quest.updated_at,
-                    },
-                }
-                for progress in new_user_data.quest_progress
-            ],
-            "achievements": [
-                {
-                    "id": str(achievement.id),
-                    "name": achievement.achievement.name,
-                    "description": achievement.achievement.description,
-                    "imageUrl": achievement.achievement.image_url,
-                    "isLocked": achievement.is_locked,
-                    "status": achievement.status,
-                }
-                for achievement in new_user_data.achievements
-            ],
-        }
-
+        # Return a success message along with the newly created user data
         return {
-            "redirect": "/profile",
             "message": "User created successfully with selected role. Initial quests have been assigned.",
-            "user": user_data_response,
+            "user": new_user_with_assigned_data,
         }
 
 
