@@ -22,6 +22,7 @@ from sqlalchemy.orm import (
     joinedload,
 )  # Import selectinload for eager loading of related rows
 
+
 # Function to delete a user by their ID (Telegram_id) in a cascade manner
 async def delete_user_by_id(db: AsyncSession, user_id: int):
     # Create a select query to find a user with the given ID and load related entities if necessary
@@ -54,7 +55,9 @@ async def create_user(db: AsyncSession, user: UserSchema) -> UserModel:
 
     Returns the created user instance.
     """
-    image_url = await get_user_profile_photo_link(user.telegram_id) # get link user photo
+    image_url = await get_user_profile_photo_link(
+        user.telegram_id
+    )  # get link user photo
     # Create a new User model instance, including the selected role
     new_user = UserModel(
         telegram_id=user.telegram_id,
@@ -121,16 +124,16 @@ async def create_quest(quest: QuestSchema, db: AsyncSession):
 async def get_quests(db: AsyncSession, skip: int = 0, limit: int = 10):
     # Create a query to select quests with pagination using offset and limit
     query = select(QuestModel).offset(skip).limit(limit)
-    
+
     # Execute the query asynchronously and get the result
     result = await db.execute(query)
-    
+
     # Extract the list of quests from the result
     quests = result.scalars().all()
-    
+
     # Create a separate query to count the total number of quests in the database
     total_count = await db.execute(select(func.count()).select_from(QuestModel))
-    
+
     # Map the SQLAlchemy quest objects to Pydantic models and return them along with the total count
     return [QuestSchema.from_orm(quest) for quest in quests], total_count.scalar()
 
@@ -138,8 +141,9 @@ async def get_quests(db: AsyncSession, skip: int = 0, limit: int = 10):
 # Function to retrieve one quest by ID
 async def get_quest_by_id(db: AsyncSession, quest_id: UUID):
     result = await db.execute(select(QuestModel).where(QuestModel.id == quest_id))
-    return QuestSchema.from_orm(result.scalar_one_or_none())  # Returns the quest or None if not found
-
+    return QuestSchema.from_orm(
+        result.scalar_one_or_none()
+    )  # Returns the quest or None if not found
 
 
 async def assign_initial_quests(db: AsyncSession, user_id: UUID):
@@ -220,12 +224,16 @@ async def get_data_leaderboard(telegram_id: int, days: int, db: AsyncSession):
     limit = 15
     cutoff_date = datetime.utcnow() - timedelta(days=days)
     # Query to select the top users ordered by points in descending order within the time frame
-    query_top = (select(UserModel)
-                 .where(UserModel.updated_at >= cutoff_date)
-                 .order_by(desc(UserModel.points)))
+    query_top = (
+        select(UserModel)
+        .where(UserModel.updated_at >= cutoff_date)
+        .order_by(desc(UserModel.points))
+    )
     # Query to select the specific user based on telegram_id
-    query_user = (select(UserModel).order_by(desc(UserModel.points)))
-    result_top = await db.execute(query_top)  # Execute the top users query asynchronously
+    query_user = select(UserModel).order_by(desc(UserModel.points))
+    result_top = await db.execute(
+        query_top
+    )  # Execute the top users query asynchronously
     result_user = await db.execute(query_user)  # Execute the user query asynchronously
 
     all_users = result_top.scalars().all()
@@ -242,7 +250,7 @@ async def get_data_leaderboard(telegram_id: int, days: int, db: AsyncSession):
             "points": user.points,
             "position": index + 1,
             "profileImage": str(user.image_url),
-            "isCurrentUser": user.telegram_id == telegram_id
+            "isCurrentUser": user.telegram_id == telegram_id,
         }
         users_list.append(user_data)
         if index == limit:
@@ -257,7 +265,11 @@ async def get_data_leaderboard(telegram_id: int, days: int, db: AsyncSession):
                 "points": user.points,
                 "position": index + 1,
                 "profileImage": user.image_url,
-                "isCurrentUser": True
+                "isCurrentUser": True,
             }
             break
-    return {"topUsers": users_list[:3], "restTopUsers": users_list[3:], 'currentUser': current_user}
+    return {
+        "topUsers": users_list[:3],
+        "restTopUsers": users_list[3:],
+        "currentUser": current_user,
+    }

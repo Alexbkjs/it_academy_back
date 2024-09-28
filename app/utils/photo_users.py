@@ -1,15 +1,15 @@
 from telegram import Bot
 from telegram.error import TelegramError
-
-
 from dotenv import load_dotenv  # For loading environment variables from .env file
 import os  # For accessing environment variables
 
-
 load_dotenv()
 
+
 async def get_user_profile_photo_link(user_id):
-    bot_token = os.getenv("BOT_TOKEN")  # Retrieve the bot token from environment variables
+    bot_token = os.getenv(
+        "BOT_TOKEN"
+    )  # Retrieve the bot token from environment variables
     bot = Bot(token=bot_token)
     try:
         # Getting user profile photos
