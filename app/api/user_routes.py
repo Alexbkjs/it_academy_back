@@ -12,12 +12,13 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )  # SQLAlchemy for asynchronous database operations
+from sqlalchemy.future import select
 
 # Local Application Imports
 from app.schemas import (
     UserBase,
-    RoleSelection,
     UserResponse,
+    SelectedRole,
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -27,6 +28,7 @@ from app.crud import (
     assign_initial_achievements,
 )  # CRUD operations
 from app.database import get_db  # Database session dependency
+from app.models import UserRoleModel
 
 router = APIRouter()  # Create an APIRouter instance for handling routes
 
@@ -73,59 +75,46 @@ async def get_user_data(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.post("/user", response_model=UserResponse)
 async def create_user_after_role_selection(
-    role_selection: RoleSelection,
+    role_selection: SelectedRole,
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Creates a new user after role selection. Assigns initial quests and achievements
-    if the user doesn't exist. Prevents multiple user creation if the user already exists.
+    # Retrieve role from the UserRoleModel
+    role = await db.execute(
+        select(UserRoleModel).where(UserRoleModel.role_name == role_selection.role)
+    )
+    role = role.scalars().first()
 
-    - **role_selection**: Contains the role selected by the user.
-    - **request**: The HTTP request, used to access validated params.
-    - **db**: AsyncSession for database operations.
+    if not role:
+        raise HTTPException(status_code=400, detail="Invalid role selected")
 
-    Returns the created or existing user along with a message.
-    """
     # Retrieve validated params from the request state
     validated_params = request.state.validated_params
-    # Extract the 'user' data as a string from validated params
     user_data_str = validated_params.get("user", "")
-    # Parse the user data string into a dictionary if it exists, else use an empty dict
     user_data = json.loads(user_data_str) if user_data_str else {}
 
-    # Replace 'id' with 'telegram_id' in user data to match the database field
     user_data["telegram_id"] = user_data.pop("id")
-    # Assign the selected role to the user data
-    user_data["role"] = role_selection.role
+    user_data["role_id"] = role.id  # Assign the role ID to user_data
 
-    # Check if a user with the provided Telegram ID already exists
     existing_user = await get_user_by_tID(db, user_data.get("telegram_id"))
     if existing_user:
-        # If the user already exists, return a message and the user data
         return {
             "message": "Prevent multiple user creation, user already exists",
             "user": existing_user,
         }
 
-    else:
-        # If the user doesn't exist, create a new user using the provided data
-        new_user = await create_user(db, UserBase(**user_data))
+    new_user = await create_user(db, UserBase(**user_data))
+    await assign_initial_quests(db, new_user.id)
+    await assign_initial_achievements(db, new_user.id)
 
-        # Assign initial quests and achievements to the newly created user
-        await assign_initial_quests(db, new_user.id)
-        await assign_initial_achievements(db, new_user.id)
+    new_user_with_assigned_data = await get_user_by_tID(
+        db, user_data.get("telegram_id")
+    )
 
-        # Fetch the newly created user along with assigned data (quests, achievements)
-        new_user_with_assigned_data = await get_user_by_tID(
-            db, user_data.get("telegram_id")
-        )
-
-        # Return a success message along with the newly created user data
-        return {
-            "message": "User created successfully with selected role. Initial quests have been assigned.",
-            "user": new_user_with_assigned_data,
-        }
+    return {
+        "message": "User created successfully with selected role.",
+        "user": new_user_with_assigned_data,
+    }
 
 
 # Endpoint to delete a user by ID

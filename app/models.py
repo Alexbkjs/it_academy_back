@@ -18,10 +18,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
 
 
-class UserRole(Enum):
-    adventurer = "adventurer"
-    avatar = "avatar"
-    kingdom = "kingdom"
+class UserRoleModel(Base):
+    __tablename__ = "user_roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    role_name = Column(String, unique=True, nullable=False)
 
 
 class User(Base):
@@ -41,7 +42,9 @@ class User(Base):
     level = Column(Integer, default=1)
     points = Column(Integer, default=100)
     coins = Column(Integer, default=1000)
-    role = Column(PyEnum(UserRole), nullable=True)  # Use Enum as the column type
+    role_id = Column(
+        UUID(as_uuid=True), ForeignKey("user_roles.id"), nullable=True
+    )  # ForeignKey reference
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
 
@@ -51,6 +54,8 @@ class User(Base):
     quest_progress = relationship(
         "UserQuestProgress", cascade="all, delete", back_populates="user"
     )
+    # Relationship to user roles
+    role = relationship("UserRoleModel")
 
 
 class Quest(Base):

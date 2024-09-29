@@ -8,8 +8,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data # Persist data
+    # volumes:
+    #   - postgres_data:/var/lib/postgresql/data
+
+    # In development, it's best to avoid persistent volumes to ensure a fresh database state for every developer, using migrations and seed data to maintain consistency.
+    # In production, you should use persistent volumes for database data, automate migrations, and implement proper backup and rollback mechanisms.
 
   app:
     build: .
@@ -27,6 +30,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-volumes:
-  postgres_data:

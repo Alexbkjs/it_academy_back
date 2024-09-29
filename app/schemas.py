@@ -5,15 +5,17 @@ from datetime import datetime
 from enum import Enum
 
 
-# Enum for UserRole
-class UserRole(str, Enum):
-    adventurer = "adventurer"
-    avatar = "avatar"
-    kingdom = "kingdom"
+class UserRoleModel(BaseModel):
+    id: UUID
+    role_name: str
+
+    class Config:
+        from_attributes = True  # Enables Pydantic to work with ORM objects directly
+        populate_by_name = True  # Allow using field names for population
 
 
-class RoleSelection(BaseModel):
-    role: UserRole
+class SelectedRole(BaseModel):
+    role: str
 
 
 # Quest schema
@@ -164,7 +166,9 @@ class UserBase(BaseModel):
     level: int = Field(1, alias="level")
     points: int = Field(100, alias="points")
     coins: int = Field(1000, alias="coins")
-    role: Optional[UserRole] = Field(None, alias="role")
+    # Now role is an object instead of just role_id
+    # role: Optional[UserRoleModel] = None
+    role_id: UUID  # Change to string to match incoming role value
 
     quest_progress: List[UserQuestProgress] = Field([], alias="userQuests")
     achievements: List[UserAchievement] = Field([], alias="userAchievements")
@@ -187,3 +191,7 @@ class User(UserBase):
 class UserResponse(BaseModel):
     message: str
     user: UserBase
+
+    class Config:
+        from_attributes = True  # Enables Pydantic to work with ORM objects directly
+        populate_by_name = True  # Allow using field names for population

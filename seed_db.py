@@ -12,7 +12,7 @@ from app.models import (
     UserQuestProgress,
     Requirement,
     Reward,
-    UserRole,
+    UserRoleModel,
 )
 
 import httpx
@@ -61,7 +61,7 @@ async def is_database_empty():
 async def create_tables():
     async with async_engine.begin() as conn:
         # Drop all tables (for development/testing purposes, remove in production)
-        # await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all)
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
 
@@ -81,38 +81,74 @@ async def fetch_random_user():
         return None
 
 
+async def seed_roles():
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            # Check if roles already exist
+            existing_roles = await session.execute(
+                select(UserRoleModel).where(
+                    UserRoleModel.role_name.in_(
+                        ["adventurer", "avatar", "kingdom", "admin"]
+                    )
+                )
+            )
+            existing_roles = existing_roles.scalars().all()
+            existing_role_names = {role.role_name for role in existing_roles}
+
+            # Only add roles that do not already exist
+            new_roles = []
+            if "adventurer" not in existing_role_names:
+                new_roles.append(UserRoleModel(role_name="adventurer"))
+            if "avatar" not in existing_role_names:
+                new_roles.append(UserRoleModel(role_name="avatar"))
+            if "kingdom" not in existing_role_names:
+                new_roles.append(UserRoleModel(role_name="kingdom"))
+            if "admin" not in existing_role_names:
+                new_roles.append(UserRoleModel(role_name="admin"))
+
+            if new_roles:
+                session.add_all(new_roles)
+
+        # Commit the new roles to the database
+        await session.commit()
+
+        # Optionally retrieve the roles to confirm they were added
+        all_roles = await session.execute(select(UserRoleModel))
+        all_roles = all_roles.scalars().all()
+        print(f"Seeded roles: {[role.role_name for role in all_roles]}")
+
+
 async def seed_users():
     async with AsyncSessionLocal() as session:
         async with session.begin():
+            # Fetch the 'adventurer' role from the database
+            adventurer_role = await session.execute(
+                select(UserRoleModel).where(UserRoleModel.role_name == "adventurer")
+            )
+            adventurer_role = adventurer_role.scalars().first()
+
             users = []
             for _ in range(14):  # Generate 14 users
                 random_user = await fetch_random_user()
                 if random_user:
                     user = User(
                         id=uuid.uuid4(),
-                        telegram_id=random.randint(
-                            100000000, 999999999
-                        ),  # Random telegram ID
+                        telegram_id=random.randint(100000000, 999999999),
                         first_name=random_user["first_name"],
                         last_name=random_user["last_name"],
-                        username=f'{random_user["first_name"].lower()}_{random_user["last_name"].lower()}',  # Create a random username
-                        user_class=random.choice(
-                            ["Warrior", "Mage", "Rogue"]
-                        ),  # Random class
-                        role=UserRole.adventurer,  # Keep role as adventurer
-                        level=random.randint(1, 10),  # Random level between 1 and 10
-                        points=random.randint(100, 500),  # Random points
-                        coins=random.randint(1000, 10000),  # Random coins
-                        image_url=random_user["image_url"],  # Profile image from API
-                        updated_at=datetime.utcnow() - timedelta(days=random.randint(1, 200)) # Random date of user data update
-
+                        username=f'{random_user["first_name"].lower()}_{random_user["last_name"].lower()}',
+                        user_class=random.choice(["Warrior", "Mage", "Rogue"]),
+                        role_id=adventurer_role.id,  # Assign role as adventurer
+                        level=random.randint(1, 10),
+                        points=random.randint(100, 500),
+                        coins=random.randint(1000, 10000),
+                        image_url=random_user["image_url"],
+                        updated_at=datetime.utcnow()
+                        - timedelta(days=random.randint(1, 200)),
                     )
                     users.append(user)
 
-            # Add all users to the session
             session.add_all(users)
-
-        # Commit the session
         await session.commit()
 
 
@@ -328,6 +364,7 @@ async def main():
     # Check if the database is empty
     if await is_database_empty():
         print("Database is empty, performing seeding...")
+        await seed_roles()
         await seed_users()
         await seed_quests()
         await seed_achievements()

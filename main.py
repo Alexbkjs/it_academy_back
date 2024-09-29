@@ -7,8 +7,14 @@ from app.api.leaderboard import router as leaderboard
 
 from app.utils.auth_middleware import AuthMiddleware
 
+import logging
+
+
 # Create an instance of the FastAPI application
 app = FastAPI()
+
+logging.basicConfig()
+logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # Add the AuthMiddleware to the app
 app.add_middleware(AuthMiddleware)
