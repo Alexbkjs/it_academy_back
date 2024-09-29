@@ -14,15 +14,15 @@ class UserRoleModel(BaseModel):
         populate_by_name = True  # Allow using field names for population
 
 
-class SelectedRole(BaseModel):
+class UserRoleResponse(BaseModel):
+    role_name: str  # Only return the role_name field
+
+    class Config:
+        from_attributes = True  # Enables Pydantic to work with ORM objects directly
+
+
+class UserRoleCreate(BaseModel):
     role: str
-
-
-# Quest schema
-
-# Example Use Cases
-# Creating a New Quest: Use QuestBase for the request body.
-# Retrieving Quest Details: Use Quest for the response, which includes the additional fields.
 
 
 class QuestBase(BaseModel):
@@ -154,6 +154,31 @@ class UserAchievement(UserAchievementBase):
 
 # User schema
 class UserBase(BaseModel):
+    telegram_id: int = Field(..., alias="telegramId")
+    first_name: str = Field(..., alias="firstName")
+    last_name: str = Field(..., alias="lastName")
+    username: Optional[str] = None
+    user_class: Optional[str] = Field(None, alias="userClass")
+    image_url: Optional[str] = Field(
+        "https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg",
+        alias="imageUrl",
+    )
+    level: int = Field(1, alias="level")
+    points: int = Field(100, alias="points")
+    coins: int = Field(1000, alias="coins")
+    # Now role is an object instead of just role_id
+    role: UserRoleResponse
+    # role_id: UUID  # Change to string to match incoming role value
+
+    quest_progress: List[UserQuestProgress] = Field([], alias="userQuests")
+    achievements: List[UserAchievement] = Field([], alias="userAchievements")
+
+    class Config:
+        from_attributes = True  # Enables Pydantic to work with ORM objects directly
+        populate_by_name = True  # Allow using field names for population
+
+
+class UserCreate(BaseModel):
     telegram_id: int = Field(..., alias="telegramId")
     first_name: str = Field(..., alias="firstName")
     last_name: str = Field(..., alias="lastName")

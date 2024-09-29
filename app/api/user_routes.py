@@ -18,7 +18,8 @@ from sqlalchemy.future import select
 from app.schemas import (
     UserBase,
     UserResponse,
-    SelectedRole,
+    UserRoleCreate,
+    UserCreate,
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -29,6 +30,8 @@ from app.crud import (
 )  # CRUD operations
 from app.database import get_db  # Database session dependency
 from app.models import UserRoleModel
+
+from app.utils.role_check import role_required
 
 router = APIRouter()  # Create an APIRouter instance for handling routes
 
@@ -75,13 +78,15 @@ async def get_user_data(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.post("/user", response_model=UserResponse)
 async def create_user_after_role_selection(
-    role_selection: SelectedRole,
+    role_selected_by_user: UserRoleCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     # Retrieve role from the UserRoleModel
     role = await db.execute(
-        select(UserRoleModel).where(UserRoleModel.role_name == role_selection.role)
+        select(UserRoleModel).where(
+            UserRoleModel.role_name == role_selected_by_user.role
+        )
     )
     role = role.scalars().first()
 
@@ -103,7 +108,7 @@ async def create_user_after_role_selection(
             "user": existing_user,
         }
 
-    new_user = await create_user(db, UserBase(**user_data))
+    new_user = await create_user(db, UserCreate(**user_data))
     await assign_initial_quests(db, new_user.id)
     await assign_initial_achievements(db, new_user.id)
 
@@ -119,7 +124,10 @@ async def create_user_after_role_selection(
 
 # Endpoint to delete a user by ID
 @router.delete("/user/{user_id}")
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
+@role_required(["admin", "kingdom"])  # Only admin and kingdom can delete users
+async def delete_user(
+    user_id: int, request: Request, db: AsyncSession = Depends(get_db)
+):
     """
     Delete a user by their ID.
 
