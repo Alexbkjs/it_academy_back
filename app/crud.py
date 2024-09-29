@@ -221,7 +221,6 @@ async def assign_initial_achievements(db: AsyncSession, user_id: UUID):
 
 
 async def get_data_leaderboard(telegram_id: int, days: int, db: AsyncSession):
-    limit = 15
     cutoff_date = datetime.utcnow() - timedelta(days=days)
     # Query to select the top users ordered by points in descending order within the time frame
     query_top = (
@@ -241,35 +240,37 @@ async def get_data_leaderboard(telegram_id: int, days: int, db: AsyncSession):
     users_list = []
     current_user = None
     for index, user in enumerate(all_users):
-        if index == limit:
+        if index == days:
             break
         user_data = {
-            "id": str(user.telegram_id),
+            "id": str(user.id),
+            "telegramId": str(user.telegram_id),
             "firstName": user.first_name,
             "lastName": user.last_name,
+            "imageUrl": user.image_url,
             "points": user.points,
             "position": index + 1,
-            "profileImage": str(user.image_url),
             "isCurrentUser": user.telegram_id == telegram_id,
         }
         users_list.append(user_data)
-        if index == limit:
+        if index == days:
             break
 
     for index, user in enumerate(user_info):
         if user.telegram_id == telegram_id:
             current_user = {
-                "id": str(user.telegram_id),
+                "id": str(user.id),
+                "telegramId": str(user.telegram_id),
                 "firstName": user.first_name,
                 "lastName": user.last_name,
+                "imageUrl": user.image_url,
                 "points": user.points,
                 "position": index + 1,
-                "profileImage": user.image_url,
                 "isCurrentUser": True,
             }
             break
+
     return {
-        "topUsers": users_list[:3],
-        "restTopUsers": users_list[3:],
+        "users": users_list,
         "currentUser": current_user,
     }
