@@ -124,7 +124,9 @@ async def create_user_after_role_selection(
 
 # Endpoint to delete a user by ID
 @router.delete("/user/{user_id}")
-@role_required(["admin", "kingdom"])  # Only admin and kingdom can delete users
+@role_required(
+    ["admin", "kingdom", "adventurer"]
+)  # Only admin and kingdom can delete users
 async def delete_user(
     user_id: int, request: Request, db: AsyncSession = Depends(get_db)
 ):

@@ -36,7 +36,7 @@ class User(Base):
     user_class = Column(String, nullable=True)
     image_url = Column(
         String,
-        nullable=True,
+        nullable=False,
         default="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg",
     )
     level = Column(Integer, default=1)
