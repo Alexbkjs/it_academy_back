@@ -7,6 +7,7 @@ from fastapi import (
     HTTPException,
     Depends,
     Request,
+    status,
 )  # FastAPI components for routing and error handling
 
 from sqlalchemy.ext.asyncio import (
@@ -16,10 +17,11 @@ from sqlalchemy.future import select
 
 # Local Application Imports
 from app.schemas import (
-    UserBase,
+    UserBase as User,
     UserResponse,
     UserRoleCreate,
     UserCreate,
+    UpdateUserClassRequest,
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -30,10 +32,40 @@ from app.crud import (
 )  # CRUD operations
 from app.database import get_db  # Database session dependency
 from app.models import UserRoleModel
+from app.utils.get_current_user import get_current_user
 
 from app.utils.role_check import role_required
+from app.models import User as UserModel
 
 router = APIRouter()  # Create an APIRouter instance for handling routes
+
+
+# @router.put("/user/class", response_model=UserResponse) // getting validation error
+@router.put("/user/class")
+async def update_user_class(
+    update_data: UpdateUserClassRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Validate user class
+    if update_data.userClass not in ["frontend", "designer"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user class. Choose either 'frontend' or 'designer'.",
+        )
+
+    # Update the user class directly
+    current_user.user_class = update_data.userClass
+
+    # Commit the change
+    await db.commit()
+    await db.refresh(current_user)
+
+    # Return the updated user
+    return {
+        "message": "User was updated successfully",
+        "user": current_user,  # Convert to Pydantic model
+    }
 
 
 # Endpoint to verify initial data and handle user authentication
