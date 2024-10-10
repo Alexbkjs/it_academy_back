@@ -24,7 +24,6 @@ from app.schemas import (
     UserResponse,
     UserRoleCreate,
     UserCreate,
-
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -121,9 +120,9 @@ async def get_user_by_tg_id(user_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/users", response_model=UserResponse)
 async def create_user_after_role_selection(
-        role_selected_by_user: UserRoleCreate,
-        request: Request,
-        db: AsyncSession = Depends(get_db),
+    role_selected_by_user: UserRoleCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     # Retrieve role from the UserRoleModel
     role = await db.execute(
@@ -167,8 +166,12 @@ async def create_user_after_role_selection(
 
 # Endpoint to delete a user by ID
 @router.delete("/users/{user_id}")
-@role_required(["admin", "kingdom", "adventurer"])  # Only admin and kingdom can delete users
-async def delete_user(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+@role_required(
+    ["admin", "kingdom", "adventurer"]
+)  # Only admin and kingdom can delete users
+async def delete_user(
+    user_id: int, request: Request, db: AsyncSession = Depends(get_db)
+):
     """
     Delete a user by their ID.
 
@@ -186,7 +189,9 @@ async def delete_user(user_id: int, request: Request, db: AsyncSession = Depends
 
 @router.put("/users/{user_id}")
 @role_required(["admin"])  # Only admin  can change users
-async def update_all_information(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+async def update_all_information(
+    user_id: int, request: Request, db: AsyncSession = Depends(get_db)
+):
     """
     Change all information in selected user by their ID.
 
@@ -216,14 +221,14 @@ async def update_all_information(user_id: int, request: Request, db: AsyncSessio
 
     await db.commit()
 
-    return {"message": "User information successfully replaced",
-            "user": user_info
-            }
+    return {"message": "User information successfully replaced", "user": user_info}
 
 
 @router.patch("/users/{user_id}")
 @role_required(["admin"])  # Only admin  can change users
-async def update_selected_information(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+async def update_selected_information(
+    user_id: int, request: Request, db: AsyncSession = Depends(get_db)
+):
     """
     Change some selected information in selected user by their ID.
 
@@ -240,7 +245,15 @@ async def update_selected_information(user_id: int, request: Request, db: AsyncS
     if not user_info:
         raise HTTPException(404, "User not found")
 
-    available_fields = ["first_name", "last_name", "username", "user_class", "level", "coins", "points"]
+    available_fields = [
+        "first_name",
+        "last_name",
+        "username",
+        "user_class",
+        "level",
+        "coins",
+        "points",
+    ]
 
     for field in available_fields:
         if field in new_user_data:
@@ -250,6 +263,4 @@ async def update_selected_information(user_id: int, request: Request, db: AsyncS
 
     await db.commit()
 
-    return {"message": "User information successfully replaced",
-            "user": user_info
-            }
+    return {"message": "User information successfully replaced", "user": user_info}
