@@ -149,3 +149,23 @@ class Reward(Base):
     )  # Corrected ForeignKey
 
     quest = relationship("Quest", back_populates="rewards")
+    coins = Column(Integer, default=0)
+    points = Column(Integer, default=0)
+    level_increase = Column(Integer, default=0)
+    created_at = Column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    updated_at = Column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=True
+    )
+
+
+class UserRewards(Base):
+    __tablename__ = "user_rewards"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reward_id = Column(UUID(as_uuid=True), ForeignKey("rewards.id"), nullable=False)
+    received_at = Column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )

@@ -1,4 +1,4 @@
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
@@ -10,12 +10,16 @@ from app.models import (
     UserQuestProgress as UserQuestProgressModel,
     Achievement as AchievementModel,
     UserAchievementModel,
+    Reward as RewardModel,
+    UserRewards as UserRewardsModel,
 )
 from app.schemas import (
     User as UserSchema,
     Quest as QuestSchema,
     UserRoleModel,
     UserBase,
+    Reward as RewardSchema,
+    RewardBase as RewardBaseSchema,
 )
 from app.utils.photo_users import get_user_profile_photo_link
 from uuid import UUID
@@ -26,6 +30,7 @@ from sqlalchemy.orm import (
 )  # Import selectinload for eager loading of related rows
 
 from typing import Optional
+from datetime import datetime, timezone
 
 
 # Function to delete a user by their ID (Telegram_id) in a cascade manner
@@ -51,6 +56,21 @@ async def delete_user_by_id(db: AsyncSession, user_id: int):
         await db.commit()
         return True  # Return True if the deletion was successful
     return False  # Return False if no user was found
+
+
+async def delete_reward_by_id(reward_id: UUID, db: AsyncSession):
+    query = select(RewardModel).where(RewardModel.id == reward_id)
+
+    result = await db.execute(query)
+
+    reward = result.scalar_one_or_none()
+
+    if reward:
+        await db.delete(reward)
+        await db.commit()
+        return True
+
+    raise HTTPException(status_code=404, detail="Reward not found")
 
 
 async def create_user(db: AsyncSession, user_data: UserBase):
@@ -120,6 +140,27 @@ async def create_quest(quest: QuestSchema, db: AsyncSession):
     await db.commit()  # Commit the transaction
     # Return the quest data with the newly inserted ID
     return {**quest.model_dump(), "id": result.inserted_primary_key[0]}
+
+
+async def create_reward(quest: UUID, reward: RewardBaseSchema, db: AsyncSession):
+    # Create an insert query for the RewardModel table with the provided reward  data
+    query = RewardModel.__table__.insert().values(
+        description=reward.description,
+        quest_id=quest,
+        coins=reward.coins,
+        points=reward.points,
+        level_increase=reward.level_increase,
+        created_at=datetime.now(),
+    )
+
+    result = await db.execute(query)  # Execute the query asynchronously
+    await db.commit()  # Commit the transaction
+    # Return the quest data with the newly inserted ID
+    return {
+        **reward.model_dump(),
+        "quest_id": quest,
+        "id": result.inserted_primary_key[0],
+    }
 
 
 # Function to retrieve a list of quests with optional pagination
@@ -276,3 +317,99 @@ async def get_data_leaderboard(telegram_id: int, days: int, db: AsyncSession):
         "users": users_list,
         "currentUser": current_user,
     }
+
+
+async def complete_quest_and_take_rewards(
+    user_id: UUID, quest_id: UUID, db: AsyncSession
+):
+    """
+
+    This function verification if Quest completed
+    fetch the reward for quest and insert info in user_rewards if all condition done, update user and give rewards
+    with update user data.
+
+    - **db**: Database session dependency.
+    - **user_id**: ID of the user who completed quest.
+    - **quest_id** ID of the completed quest.
+    """
+    query_user = select(UserModel).where(UserModel.id == user_id)
+    user_response = await db.execute(query_user)
+    user = user_response.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    quest_query = (
+        select(UserQuestProgressModel)
+        .where(UserQuestProgressModel.user_id == user_id)
+        .where(UserQuestProgressModel.quest_id == quest_id)
+    )
+    quest_response = await db.execute(quest_query)
+    quest_progress = quest_response.scalar_one_or_none()
+
+    if not quest_progress or quest_progress.status != "completed":
+        raise HTTPException(status_code=409, detail="Quest not completed yet.")
+
+    reward_query = select(RewardModel).where(RewardModel.quest_id == quest_id)
+    reward_response = await db.execute(reward_query)
+    reward_result = reward_response.scalar_one_or_none()
+
+    if not reward_result:  # If not reward raise HTTPException
+        raise HTTPException(status_code=404, detail="No reward found for this quest.")
+
+    user_reward_query = select(UserRewardsModel).where(
+        UserRewardsModel.user_id == user_id
+    )
+    user_reward_response = await db.execute(user_reward_query)
+    user_reward_result = user_reward_response.scalar_one_or_none()
+
+    if user_reward_result:  # If user take already reward, raise HTTPException
+        raise HTTPException(
+            status_code=409, detail="Reward for this quest has already been claimed"
+        )
+    # Creating record in template user_rewards.
+    await db.execute(
+        insert(UserRewardsModel).values(
+            user_id=user_id,
+            reward_id=reward_result.id,
+            received_at=datetime.now(),
+        )
+    )
+    # Updating user profile and add reward.
+    await db.execute(
+        update(UserModel)
+        .where(UserModel.id == user_id)
+        .values(
+            coins=user.coins + reward_result.coins,
+            points=user.points + reward_result.points,
+            level=user.level + reward_result.level_increase,
+        )
+    )
+    # Save all changes.
+    await db.commit()
+
+    return {
+        "message": "Reward successfully claimed",
+        "reward": reward_result.coins,
+        "points": reward_result.points,
+        "level": reward_result.level_increase,
+        "user": user,
+    }
+
+
+async def get_reward_by_quest_id(quest_id: UUID, db: AsyncSession):
+    """
+    This function return rewards by quest_id.
+
+    - **db**: Database session dependency.
+    - **quest_id** ID of the completed quest.
+    """
+
+    query = select(RewardModel).where(RewardModel.quest_id == quest_id)
+    result = await db.execute(query)
+    reward = result.scalars().all()
+
+    if not reward:
+        return None
+
+    return reward

@@ -1,13 +1,25 @@
 # app/api/quest_routes.py
-
-from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, update
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.schemas import Quest as QuestSchema, QuestsResponse
-from app.crud import create_quest, get_quests, get_quest_by_id
+from app.models import Reward as RewardModel
+from app.schemas import (
+    Quest as QuestSchema,
+    QuestsResponse,
+    RewardBase as RewardBaseSchema,
+)
+from app.crud import (
+    create_quest,
+    get_quests,
+    get_quest_by_id,
+    get_reward_by_quest_id,
+    create_reward,
+    delete_reward_by_id,
+)
 from app.database import get_db
 from uuid import UUID
 
+from app.utils.role_check import role_required
 
 # Create an APIRouter instance for quest-related routes
 router = APIRouter()
@@ -74,3 +86,94 @@ async def read_quest(
 
     # Return the retrieved quest as a QuestSchema
     return quest
+
+
+@router.get("/quests/{quest_id}/rewards")
+async def get_quest_rewards(quest_id: UUID, db: AsyncSession = Depends(get_db)):
+    """
+    Retrieve a rewards by quest ID from the database.
+
+    - **quest_id**: The ID of the quest to retrieve.
+    - **db**: Database session dependency, automatically provided by FastAPI.
+
+    Returns a JSON object representing the quest. If the quest is not found, raises a 404 error.
+    """
+
+    reward = await get_reward_by_quest_id(quest_id, db)
+
+    if reward is None:
+        raise HTTPException(status_code=404, detail="Rewards not found")
+
+    return reward
+
+
+@router.post("/quests/{quest_id}/rewards")
+async def create_for_quest_reward(
+    quest_id: UUID, reward_data: RewardBaseSchema, db: AsyncSession = Depends(get_db)
+):
+    """
+    Create a new reward  in the database with selected quest_id.
+
+    - **quest**: The quest data to be created, provided in the request body.
+    - **reward_data**: The reward data to be added to the reward table.
+    - **db**: Database session dependency, automatically provided by FastAPI.
+
+    Returns the created reward  with its ID.
+    """
+    return await create_reward(quest_id, reward_data, db)
+
+
+@router.patch("/quests/{quest_id}/rewards/{reward_id}")
+async def patch_the_reward(
+    reward_id: UUID, request: Request, db: AsyncSession = Depends(get_db)
+):
+    """
+    Update exist  reward  in the database.
+
+    - **quest_id**: The quest data to be created, provided in the request body.
+    - **db**: Database session dependency, automatically provided by FastAPI.
+
+    Returns the updated  reward.
+    """
+    query = select(RewardModel).where(RewardModel.id == reward_id)
+
+    response = await db.execute(query)
+
+    reward = response.scalar_one_or_none()
+    new_request_data = await request.json()
+
+    if not reward:
+        raise HTTPException(
+            status_code=404, detail="Reward does not exist for this quest"
+        )
+
+    available_fields = ["description", "coins", "points", "level_increase", "quest_id"]
+
+    for field in available_fields:
+        if field in new_request_data:
+            setattr(reward, field, new_request_data[field])
+
+    await db.commit()
+
+    return {"message": "Reward  information successfully updated", "reward": reward}
+
+
+@router.delete("/quests/{quest_id}/rewards/{reward_id}")
+# @role_required(
+#     ["admin", "kingdom", "adventurer"]
+# )  # Only admin and kingdom can delete users ,,, With active required_role reward doesn't delete.
+async def delete_reward(reward_id: UUID, db: AsyncSession = Depends(get_db)):
+    """
+    Delete a reward  by reward ID.
+
+    - **reward_id**: The ID of the user to delete.
+    - **db**: Database session dependency, automatically provided by FastAPI.
+
+    Returns a success message if the user is deleted, or raises a 404 error if not found.
+    """
+
+    reward_deleted = await delete_reward_by_id(reward_id, db)
+    if reward_deleted:
+        return {"message": "Reward deleted successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="Reward not found")

@@ -1,6 +1,7 @@
 # Standard Library Imports
 import json  # For JSON parsing
 from typing import List
+from uuid import UUID
 
 # Third-Party Imports
 from fastapi import (
@@ -31,6 +32,7 @@ from app.crud import (
     delete_user_by_id,
     assign_initial_quests,
     assign_initial_achievements,
+    complete_quest_and_take_rewards,
 )  # CRUD operations
 from app.database import get_db  # Database session dependency
 from app.models import UserRoleModel
@@ -89,8 +91,9 @@ async def get_all_users(db: AsyncSession = Depends(get_db)):
 
     Returns a list of users.
     """
-    result = await db.execute(select(UserModel))
 
+    query = select(UserModel)
+    result = await db.execute(query)
     users = result.scalars().all()
 
     return {"message": "Users data fetched from the database", "users": users}
@@ -107,9 +110,9 @@ async def get_user_by_tg_id(user_id: int, db: AsyncSession = Depends(get_db)):
 
     """
 
-    result = await db.execute(select(UserModel).where(UserModel.telegram_id == user_id))
-
-    user = result.scalar_one_or_none()
+    query = select(UserModel).where(UserModel.telegram_id == user_id)
+    query_result = await db.execute(query)
+    user = query_result.scalar_one_or_none()
 
     if user:
 
@@ -200,9 +203,9 @@ async def update_all_information(
 
     Returns a success message if the user information changed, or raises a 404 error if not found.
     """
-    result = await db.execute(select(UserModel).where(UserModel.telegram_id == user_id))
-
-    user_info = result.scalar_one_or_none()
+    query = select(UserModel).where(UserModel.telegram_id == user_id)
+    query_result = await db.execute(query)
+    user_info = query_result.scalar_one_or_none()
 
     if not user_info:
         raise HTTPException(404, "User not found")
@@ -232,14 +235,14 @@ async def update_selected_information(
     """
     Change some selected information in selected user by their ID.
 
-    - **user_id**: The ID of the user to put information.
+    - **user_id**: The ID of the user based on TG-ID.
     - **db**: Database session dependency, automatically provided by FastAPI.
 
     Returns a success message if the user selected information changed, or raises a 404 error if not found.
     """
-    result = await db.execute(select(UserModel).where(UserModel.telegram_id == user_id))
-
-    user_info = result.scalar_one_or_none()
+    query = select(UserModel).where(UserModel.telegram_id == user_id)
+    query_result = await db.execute(query)
+    user_info = query_result.scalar_one_or_none()
 
     new_user_data = await request.json()
     if not user_info:
@@ -264,3 +267,10 @@ async def update_selected_information(
     await db.commit()
 
     return {"message": "User information successfully replaced", "user": user_info}
+
+
+@router.post("/users/{user_id}/quests/{quest_id}/complete")
+async def complete_quest(
+    user_id: UUID, quest_id: UUID, db: AsyncSession = Depends(get_db)
+):
+    return await complete_quest_and_take_rewards(user_id, quest_id, db)
