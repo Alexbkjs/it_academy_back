@@ -9,7 +9,6 @@ from sqlalchemy import (
     DateTime,
     func,
     ForeignKey,
-    Enum as PyEnum,
 )
 from sqlalchemy.orm import relationship
 import uuid

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models import User
 from app.database import get_db
+from app.crud import get_user_by_tID
 
 
 async def get_current_user(
@@ -15,7 +16,6 @@ async def get_current_user(
         raise HTTPException(
             status_code=401,
             detail="User not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Parse the 'user' field
@@ -24,7 +24,6 @@ async def get_current_user(
         raise HTTPException(
             status_code=401,
             detail="User data missing from request",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
@@ -34,25 +33,20 @@ async def get_current_user(
         raise HTTPException(
             status_code=400,
             detail="Invalid user data format",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     if not user_id:
         raise HTTPException(
             status_code=401,
             detail="User ID missing from user data",
-            headers={"WWW-Authenticate": "Bearer"},
         )
-
     # Retrieve user asynchronously
-    result = await db.execute(select(User).filter(User.telegram_id == user_id))
-    user = result.scalars().first()
+    user = await get_user_by_tID(db, user_id)
 
     if user is None:
         raise HTTPException(
             status_code=401,
             detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return user
