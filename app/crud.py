@@ -11,7 +11,12 @@ from app.models import (
     Achievement as AchievementModel,
     UserAchievementModel,
 )
-from app.schemas import User as UserSchema, Quest as QuestSchema
+from app.schemas import (
+    User as UserSchema,
+    Quest as QuestSchema,
+    UserRoleModel,
+    UserBase,
+)
 from app.utils.photo_users import get_user_profile_photo_link
 from uuid import UUID
 
@@ -19,6 +24,8 @@ from sqlalchemy.orm import (
     selectinload,
     joinedload,
 )  # Import selectinload for eager loading of related rows
+
+from typing import Optional
 
 
 # Function to delete a user by their ID (Telegram_id) in a cascade manner
@@ -46,66 +53,61 @@ async def delete_user_by_id(db: AsyncSession, user_id: int):
     return False  # Return False if no user was found
 
 
-async def create_user(db: AsyncSession, user: UserSchema) -> UserModel:
-    """
-    Create a new user in the database.
+async def create_user(db: AsyncSession, user_data: UserBase):
+    # Ensure that user_data.role_id is used to access the role ID correctly
+    user_role_id = user_data.role_id  # Use role_id from the incoming data
+    # Insert your user creation logic here, including handling user_role_id correctly
+    image_url = await get_user_profile_photo_link(user_data.telegram_id)
+    new_user = UserModel(
+        telegram_id=user_data.telegram_id,
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        username=user_data.username,
+        user_class=user_data.user_class,
+        image_url=image_url,
+        level=user_data.level,
+        points=user_data.points,
+        coins=user_data.coins,
+        role_id=user_role_id,  # Correctly use the role_id here
+    )
 
-    - **db**: Database session dependency.
-    - **user**: Pydantic model containing user data.
-
-    Returns the created user instance.
-    """
-    image_url = await get_user_profile_photo_link(
-        user.telegram_id
-    )  # get link user photo
-    # Create a new User model instance, including the selected role
-
-    new_user = UserModel(**user.dict())  # Unpack user data into UserModel
-    # Add the new User instance to the session
     db.add(new_user)
-
-    # Commit the transaction to persist the new User instance
     await db.commit()
-
-    # Refresh the instance to load any database-generated fields like 'id'
     await db.refresh(new_user)
     return new_user
 
 
-async def get_user_by_tID(db: AsyncSession, telegram_id: int):
-    # Create a select query to find a user with the given telegram_id and load related quest progress and quests
+async def get_user_by_tID(db: AsyncSession, telegram_id: int) -> Optional[UserSchema]:
+    # Create a select query to find a user with the given telegram_id and load related quest progress, achievements, and role
     query = (
         select(UserModel)
         .where(UserModel.telegram_id == telegram_id)
         .options(
             joinedload(UserModel.quest_progress).joinedload(
                 UserQuestProgressModel.quest
-            ),
+            ),  # Load quest progress and related quest
             joinedload(UserModel.achievements).joinedload(
                 UserAchievementModel.achievement
-            ),  # Load the Achievement through UserAchievementModel
+            ),  # Load achievements and related achievement details
+            joinedload(UserModel.role),  # Load the role relationship
         )
     )
 
     result = await db.execute(query)  # Execute the query asynchronously
     user = result.scalars().first()  # Get the first result (or None if no user found)
 
-    # Convert the SQLAlchemy model instance to a dictionary before validating
     if user:
-        user_dict = vars(user)  # Get user fields without internal SQLAlchemy stuff
+        # If the user is found, reverse the quest_progress list
+        user.quest_progress = list(
+            reversed(user.quest_progress)
+        )  # Reverse the list in place
 
-        # Access and reverse the quest_progress list
-        if "quest_progress" in user_dict and user_dict["quest_progress"]:
-            quest_progress = user_dict["quest_progress"]
-
-            # Reverse the list without modifying the original (if immutability is needed)
-            quest_progress_reversed = quest_progress[::-1]
-
-            # Update the quest_progress field with the reversed list
-            user_dict["quest_progress"] = quest_progress_reversed
-
-        # Return the user as a UserSchema with loaded quests if found, otherwise None
-        return UserSchema.model_validate(user_dict) if user_dict else None
+        # Return the user as a Pydantic model (UserSchema)
+        return UserSchema.model_validate(
+            user
+        )  # Pydantic's ORM mode will handle conversion
+    else:
+        return None  # Return None if no user is found
 
 
 # Function to create a new quest in the database
