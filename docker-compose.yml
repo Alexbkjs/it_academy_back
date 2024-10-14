@@ -9,21 +9,21 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
-    # volumes:
-    #   - postgres_data:/var/lib/postgresql/data 
+    volumes:
+      - postgres_data:/var/lib/postgresql/data 
       
     # In development, it's best to avoid persistent volumes to ensure a fresh database state for every developer, using migrations and seed data to maintain consistency.
     # In production, you should use persistent volumes for database data, automate migrations, and implement proper backup and rollback mechanisms.
     networks:
       - back-network
 
-  # migrate-db:
-  #   image: flyway/flyway
-  #   command: -url=jdbc:postgresql://db/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} migrate
-  #   depends_on:
-  #     - db
-  #   networks:
-  #     - back-network
+  migrate-db:
+    image: flyway/flyway
+    command: -url=jdbc:postgresql://db/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} migrate
+    depends_on:
+      - db
+    networks:
+      - back-network
     
   app:
     build:
@@ -48,8 +48,8 @@ services:
     networks:
       - back-network
 
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:
 
 networks:
   back-network:
