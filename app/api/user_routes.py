@@ -22,11 +22,10 @@ from app.models import User as UserModel
 
 # Local Application Imports
 from app.schemas import (
-    UserBase as User,
     UserResponse,
     UserRoleCreate,
     UserCreate,
-    UpdateUserClassRequest
+    UpdateUserClassRequest,
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -34,7 +33,6 @@ from app.crud import (
     delete_user_by_id,
     assign_initial_quests,
     assign_initial_achievements,
-    complete_quest_and_take_rewards,
 )  # CRUD operations
 from app.database import get_db  # Database session dependency
 from app.models import UserRoleModel, User as UserModel
@@ -104,9 +102,58 @@ async def get_user_data(request: Request, db: AsyncSession = Depends(get_db)):
             detail="Please choose a role to complete your registration.",
         )
 
+
+@router.post("/user", response_model=UserResponse)
+async def create_user_after_role_selection(
+    role_selected_by_user: UserRoleCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    # Retrieve role from the UserRoleModel
+    role = await db.execute(
+        select(UserRoleModel).where(
+            UserRoleModel.role_name == role_selected_by_user.role
+        )
+    )
+    role = role.scalars().first()
+
+    if not role:
+        raise HTTPException(status_code=400, detail="Invalid role selected")
+
+    # Retrieve validated params from the request state
+    validated_params = request.state.validated_params
+    user_data_str = validated_params.get("user", "")
+    user_data = json.loads(user_data_str) if user_data_str else {}
+
+    user_data["telegram_id"] = user_data.pop("id")
+    user_data["role_id"] = role.id  # Assign the role ID to user_data
+
+    existing_user = await get_user_by_tID(db, user_data.get("telegram_id"))
+    if existing_user:
+        return {
+            "message": "Prevent multiple user creation, user already exists",
+            "user": existing_user,
+        }
+
+    new_user = await create_user(db, UserCreate(**user_data))
+    await assign_initial_quests(db, new_user.id)
+    await assign_initial_achievements(db, new_user.id)
+
+    new_user_with_assigned_data = await get_user_by_tID(
+        db, user_data.get("telegram_id")
+    )
+
+    return {
+        "message": "User created successfully with selected role.",
+        "user": new_user_with_assigned_data,
+    }
+
+
 # Endpoint to delete a user by ID
 @router.delete("/user/{user_id}")
-@role_required(["adventurer"])  # Temporary solution for testing purposes to be able to remove the user from db via frontend
+@role_required(
+    ["adventurer"]
+)  # Temporary solution for testing purposes to be able to remove the user from db via frontend
 async def delete_user(
     user_id: int, request: Request, db: AsyncSession = Depends(get_db)
 ):
@@ -123,5 +170,3 @@ async def delete_user(
         return {"message": "User deleted successfully"}
     else:
         raise HTTPException(status_code=404, detail="User not found")
-
-
