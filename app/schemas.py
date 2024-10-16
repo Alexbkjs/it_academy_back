@@ -29,7 +29,6 @@ class UserRoleCreate(BaseModel):
 
 
 class QuestBase(BaseModel):
-
     name: str
     image_url: HttpUrl = Field(
         ..., alias="imageUrl", description="URL of the quest image"
@@ -84,6 +83,9 @@ class Requirement(RequirementBase):
 # Reward schema
 class RewardBase(BaseModel):
     description: str
+    coins: int = 0
+    points: int = 0
+    level_increase: int = 0
 
 
 class Reward(RewardBase):
