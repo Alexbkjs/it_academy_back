@@ -2,7 +2,10 @@ from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
-from enum import Enum
+
+
+class UpdateUserClassRequest(BaseModel):
+    userClass: str
 
 
 class UserRoleModel(BaseModel):
@@ -54,6 +57,11 @@ class QuestsResponse(BaseModel):
     message: str
     quests: List[Quest]
     total: int  # Total number of quests available
+
+
+class InitialQuestResponse(BaseModel):
+    message: str
+    quest: Quest
 
 
 # Requirement schema
@@ -216,7 +224,7 @@ class User(UserBase):
 
 
 class UserResponse(BaseModel):
-    message: str
+    message: Optional[str] = None  # The message field is now optional
     user: UserBase
 
     class Config:

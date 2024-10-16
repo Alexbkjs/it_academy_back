@@ -2,7 +2,8 @@ from sqlalchemy import select, desc, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, desc
+
 
 from app.models import (
     User as UserModel,
@@ -12,11 +13,11 @@ from app.models import (
     UserAchievementModel,
     Reward as RewardModel,
     UserRewards as UserRewardsModel,
+    InitialQuest,
 )
 from app.schemas import (
     User as UserSchema,
     Quest as QuestSchema,
-    UserRoleModel,
     UserBase,
     Reward as RewardSchema,
     RewardBase as RewardBaseSchema,
@@ -184,6 +185,7 @@ async def get_quests(db: AsyncSession, skip: int = 0, limit: int = 10):
 # Function to retrieve one quest by ID
 async def get_quest_by_id(db: AsyncSession, quest_id: UUID):
     result = await db.execute(select(QuestModel).where(QuestModel.id == quest_id))
+
     return QuestSchema.from_orm(
         result.scalar_one_or_none()
     )  # Returns the quest or None if not found
@@ -413,3 +415,30 @@ async def get_reward_by_quest_id(quest_id: UUID, db: AsyncSession):
         return None
 
     return reward
+
+async def get_initial_quest(db: AsyncSession):
+    """
+    Asynchronously retrieve the initial quest.
+
+    This function queries the database for the initial quest linked to
+    a new user. It eagerly loads the related Quest to avoid additional
+    queries.
+
+    Args:
+        db (AsyncSession): The database session for making queries.
+
+    Returns:
+        Quest or None: Returns the associated Quest object if found,
+        otherwise None.
+    """
+    # Execute a query to select the InitialQuest, eagerly loading the associated Quest
+    result = await db.execute(
+        select(InitialQuest).options(joinedload(InitialQuest.quest)).limit(1)
+    )
+
+    # Get the first result or None if there are no results
+    initial_quest = result.scalar_one_or_none()
+
+    if initial_quest:
+        return initial_quest.quest  # Return the associated Quest object
+    return None  # Return None if no initial quest was found

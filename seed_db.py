@@ -9,8 +9,6 @@ from app.models import (
     User,
     Quest,
     Achievement,
-    UserQuestProgress,
-    Requirement,
     Reward,
     UserRoleModel,
 )
@@ -66,21 +64,6 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 
-# Used for mocking user profiles
-async def fetch_random_user():
-    """Fetch random user data from https://randomuser.me/api."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get("https://randomuser.me/api/")
-        if response.status_code == 200:
-            data = response.json()["results"][0]
-            return {
-                "first_name": data["name"]["first"],
-                "last_name": data["name"]["last"],
-                "image_url": data["picture"]["large"],
-            }
-        return None
-
-
 async def seed_roles():
     async with AsyncSessionLocal() as session:
         async with session.begin():
@@ -116,40 +99,6 @@ async def seed_roles():
         all_roles = await session.execute(select(UserRoleModel))
         all_roles = all_roles.scalars().all()
         print(f"Seeded roles: {[role.role_name for role in all_roles]}")
-
-
-async def seed_users():
-    async with AsyncSessionLocal() as session:
-        async with session.begin():
-            # Fetch the 'adventurer' role from the database
-            adventurer_role = await session.execute(
-                select(UserRoleModel).where(UserRoleModel.role_name == "adventurer")
-            )
-            adventurer_role = adventurer_role.scalars().first()
-
-            users = []
-            for _ in range(14):  # Generate 14 users
-                random_user = await fetch_random_user()
-                if random_user:
-                    user = User(
-                        id=uuid.uuid4(),
-                        telegram_id=random.randint(100000000, 999999999),
-                        first_name=random_user["first_name"],
-                        last_name=random_user["last_name"],
-                        username=f'{random_user["first_name"].lower()}_{random_user["last_name"].lower()}',
-                        user_class=random.choice(["Warrior", "Mage", "Rogue"]),
-                        role_id=adventurer_role.id,  # Assign role as adventurer
-                        level=random.randint(1, 10),
-                        points=random.randint(100, 500),
-                        coins=random.randint(1000, 10000),
-                        image_url=random_user["image_url"],
-                        updated_at=datetime.utcnow()
-                        - timedelta(days=random.randint(1, 200)),
-                    )
-                    users.append(user)
-
-            session.add_all(users)
-        await session.commit()
 
 
 async def seed_quests():
@@ -260,34 +209,6 @@ async def seed_achievements():
         await session.commit()
 
 
-async def seed_requirements():
-    async with AsyncSessionLocal() as session:
-        async with session.begin():
-            # Fetch existing quests
-            result = await session.execute(select(Quest))
-            quests = result.scalars().all()
-
-            # Ensure there are quests to reference
-            if not quests:
-                raise RuntimeError("No quests available to reference in requirements")
-
-            requirements_table = [
-                Requirement(
-                    id=uuid.uuid4(),
-                    description="Завершити перший рівень",
-                    quest_id=quests[0].id,
-                ),
-                Requirement(
-                    id=uuid.uuid4(),
-                    description="Завершити другий рівень",
-                    quest_id=quests[1].id,
-                ),
-                # Add more requirements as needed
-            ]
-            session.add_all(requirements_table)
-        await session.commit()
-
-
 async def seed_rewards():
     async with AsyncSessionLocal() as session:
         async with session.begin():
@@ -316,46 +237,6 @@ async def seed_rewards():
         await session.commit()
 
 
-async def seed_user_quest_progress():
-    async with AsyncSessionLocal() as session:
-        async with session.begin():
-            # Fetch existing users and quests
-            result = await session.execute(select(User))
-            users = result.scalars().all()
-
-            result = await session.execute(select(Quest))
-            quests = result.scalars().all()
-
-            # Ensure there are users and quests to reference
-            if not users:
-                raise RuntimeError("No users available to assign quest progress")
-            if len(quests) < 2:
-                raise RuntimeError("Not enough quests available to assign to users")
-
-            user_quest_progress = []
-            for user in users:
-                user_quest_progress.extend(
-                    [
-                        UserQuestProgress(
-                            id=uuid.uuid4(),
-                            user_id=user.id,
-                            quest_id=quests[0].id,
-                            status="in_progress",
-                            progress=50.0,
-                        ),
-                        UserQuestProgress(
-                            id=uuid.uuid4(),
-                            user_id=user.id,
-                            quest_id=quests[1].id,
-                            status="in_progress",
-                            progress=75.0,
-                        ),
-                    ]
-                )
-            session.add_all(user_quest_progress)
-        await session.commit()
-
-
 # Seeding logic
 async def main():
     # Create tables first
@@ -365,12 +246,9 @@ async def main():
     if await is_database_empty():
         print("Database is empty, performing seeding...")
         await seed_roles()
-        await seed_users()
         await seed_quests()
         await seed_achievements()
-        await seed_requirements()
         await seed_rewards()
-        await seed_user_quest_progress()
     else:
         print("Database is not empty, skipping seeding.")
 
