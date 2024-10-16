@@ -1,5 +1,7 @@
 # Standard Library Imports
 import json  # For JSON parsing
+from typing import List
+from uuid import UUID
 
 # Third-Party Imports
 from fastapi import (
@@ -17,7 +19,7 @@ from sqlalchemy import select, update
 
 # Local Application Imports
 
-from app.crud import delete_user_by_id  # CRUD operations
+from app.crud import delete_user_by_id, complete_quest_and_take_rewards  # CRUD operations
 from app.database import get_db  # Database session dependency
 from app.models import User as UserModel
 from app.utils.get_current_user import get_current_user
@@ -155,3 +157,9 @@ async def update_selected_information(
     await db.commit()
 
     return {"message": "User information successfully replaced", "user": user_info}
+
+@router.post("/users/{user_id}/quests/{quest_id}/complete")
+async def complete_quest(
+    user_id: UUID, quest_id: UUID, db: AsyncSession = Depends(get_db)
+):
+    return await complete_quest_and_take_rewards(user_id, quest_id, db)
