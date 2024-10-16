@@ -8,23 +8,24 @@ from fastapi import (
     HTTPException,
     Depends,
     Request,
+    status,
 )  # FastAPI components for routing and error handling
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
 )  # SQLAlchemy for asynchronous database operations
-from sqlalchemy.future import select
+from sqlalchemy import select, update
 
 # Local Models Imports
 from app.models import User as UserModel
 
 # Local Application Imports
 from app.schemas import (
-    UserBase,
+    UserBase as User,
     UserResponse,
     UserRoleCreate,
     UserCreate,
-
+    UpdateUserClassRequest,
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -34,11 +35,42 @@ from app.crud import (
     assign_initial_achievements,
 )  # CRUD operations
 from app.database import get_db  # Database session dependency
-from app.models import UserRoleModel
+from app.models import UserRoleModel, User as UserModel
+from app.utils.get_current_user import get_current_user
 
 from app.utils.role_check import role_required
 
 router = APIRouter()  # Create an APIRouter instance for handling routes
+
+
+# @router.put("/user/class", response_model=UserResponse) // getting validation error
+@router.put("/user/class")
+async def update_user_class(
+    request: Request,
+    update_data: UpdateUserClassRequest,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Validate user class
+    if update_data.userClass not in ["frontend", "designer"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user class. Choose either 'frontend' or 'designer'.",
+        )
+    # Update the user class directly
+    update_class_query = (
+        update(UserModel)
+        .where(UserModel.id == current_user.id)
+        .values(user_class=update_data.userClass)
+    )
+    await db.execute(update_class_query)
+
+    # Commit the change
+    await db.commit()
+    updated_user = await get_current_user(request, db)
+
+    # Return the updated user
+    return {"message": "User was updated successfully", "user": updated_user}
 
 
 # Endpoint to verify initial data and handle user authentication
@@ -55,23 +87,13 @@ async def get_user_data(request: Request, db: AsyncSession = Depends(get_db)):
     Raises an HTTPException if the user is not found.
     """
 
-    # Extract validated params from the request (e.g., from middleware)
-    validated_params = request.state.validated_params
-
-    # Retrieve the 'user' data string from the validated params, if it exists
-    user_data_str = validated_params.get("user", "")
-
-    # Parse the user data string into a dictionary, or use an empty dict if not found
-    user_data = json.loads(user_data_str) if user_data_str else {}
-
-    # Attempt to fetch the existing user from the database using their Telegram ID
-    existing_user = await get_user_by_tID(db, user_data.get("id"))
-
-    if existing_user:
+    # Use the get_current_user function to retrieve the user
+    current_user = await get_current_user(request, db)
+    if current_user:
         # If the user exists, return a success message along with their data
         return {
             "message": "User data fetched from the database",
-            "user": existing_user,
+            "user": current_user,
         }
     else:
         # If no user is found, raise an HTTP 401 error and request role selection
@@ -166,9 +188,11 @@ async def create_user_after_role_selection(
 
 
 # Endpoint to delete a user by ID
-@router.delete("/users/{user_id}")
-@role_required(["admin", "kingdom", "adventurer"])  # Only admin and kingdom can delete users
-async def delete_user(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+@router.delete("/user/{user_id}")
+@role_required(["adventurer"])  # Temporary solution for testing purposes to be able to remove the user from db via frontend
+async def delete_user(
+    user_id: int, request: Request, db: AsyncSession = Depends(get_db)
+):
     """
     Delete a user by their ID.
 

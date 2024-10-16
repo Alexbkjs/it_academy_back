@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.user_routes import router as user_router
 from app.api.quest_routes import router as quest_router
 from app.api.leaderboard import router as leaderboard
+from app.admin.admin_routes import router as admin_router
 
 from app.utils.auth_middleware import AuthMiddleware
 
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 
 api_prefix = "/api/v1"
+admin_api_prefix = api_prefix + "/admin"  # /api/v1/admin
 
 # Include the user routes from the user_routes module under the /api prefix with the tag "users"
 app.include_router(user_router, prefix=api_prefix, tags=["users"])
@@ -36,6 +38,8 @@ app.include_router(
 
 # Include the user routes from the leaderboard module under the /api prefix with the tag "leaderboard"
 app.include_router(leaderboard, prefix=api_prefix, tags=["leaderboard"])
+
+app.include_router(admin_router, prefix=admin_api_prefix, tags=["admin"])
 
 
 @app.get("/health")

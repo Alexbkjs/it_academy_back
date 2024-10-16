@@ -9,7 +9,6 @@ from sqlalchemy import (
     DateTime,
     func,
     ForeignKey,
-    Enum as PyEnum,
 )
 from sqlalchemy.orm import relationship
 import uuid
@@ -74,6 +73,17 @@ class Quest(Base):
     requirements_table = relationship("Requirement", back_populates="quest")
     rewards = relationship("Reward", back_populates="quest")
     quest_progress = relationship("UserQuestProgress", back_populates="quest")
+    initial_quest = relationship("InitialQuest", back_populates="quest", uselist=False)
+
+
+class InitialQuest(Base):
+    __tablename__ = "initial_quests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    quest_id = Column(UUID(as_uuid=True), ForeignKey("quests.id"), unique=True)
+
+    # Relationship to the Quest table
+    quest = relationship("Quest", back_populates="initial_quest")
 
 
 class Achievement(Base):
