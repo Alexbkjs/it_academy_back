@@ -26,6 +26,7 @@ from app.schemas import (
     UserResponse,
     UserRoleCreate,
     UserCreate,
+    UpdateUserClassRequest
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,

@@ -7,7 +7,7 @@ from app.schemas import (
     Quest as QuestSchema,
     QuestsResponse,
     RewardBase as RewardBaseSchema,
-    InitialQuestResponse
+    InitialQuestResponse,
 )
 from app.crud import (
     create_quest,
@@ -16,8 +16,10 @@ from app.crud import (
     get_reward_by_quest_id,
     create_reward,
     delete_reward_by_id,
+    create_quest,
+    get_quests,
+    get_quest_by_id,
 )
-import create_quest, get_quests, get_quest_by_id
 from app.database import get_db
 from uuid import UUID
 from app.utils.get_current_user import get_current_user
