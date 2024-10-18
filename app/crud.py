@@ -442,3 +442,120 @@ async def get_initial_quest(db: AsyncSession):
     if initial_quest:
         return initial_quest.quest  # Return the associated Quest object
     return None  # Return None if no initial quest was found
+
+
+async def update_quest_fields_in_db(db: AsyncSession, quest_id: UUID, updated_fields: dict):
+    """
+        Asynchronously update specific fields of a quest in the database.
+
+        This function retrieves a quest by its ID and updates only the fields
+        that are provided in the `updated_fields` dictionary. It skips any fields
+        that are not provided.
+
+        Args:
+            db (AsyncSession): The database session for making queries.
+            quest_id (UUID): The unique identifier of the quest to update.
+            updated_fields (dict): A dictionary containing the fields to update
+                                   and their corresponding values.
+
+        Raises:
+            HTTPException: Raises a 404 error if the quest with the given ID
+                           is not found.
+
+        Returns:
+            QuestSchema: Returns the updated quest as a Pydantic schema model.
+        """
+
+    # Get a quest by ID
+    query = select(QuestModel).where(QuestModel.id == quest_id)
+    result = await db.execute(query)
+    quest = result.scalar_one_or_none()
+
+    if not quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+
+    # Update only those fields that have been transferred
+    for field, value in updated_fields.items():
+        if hasattr(quest, field):
+            setattr(quest, field, value)
+
+    await db.commit()
+    await db.refresh(quest)
+
+    return QuestSchema.from_orm(quest)
+
+
+async def update_quest_in_db(db: AsyncSession, quest_id: UUID, quest_data: QuestSchema):
+    """
+        Asynchronously update all fields of a quest in the database.
+
+        This function retrieves a quest by its ID and replaces all of its fields
+        with the data provided in the `quest_data` schema. It commits the changes
+        to the database and refreshes the quest.
+
+        Args:
+            db (AsyncSession): The database session for making queries.
+            quest_id (UUID): The unique identifier of the quest to update.
+            quest_data (QuestSchema): The schema containing the new quest data.
+
+        Raises:
+            HTTPException: Raises a 404 error if the quest with the given ID
+                           is not found.
+
+        Returns:
+            QuestSchema: Returns the fully updated quest as a Pydantic schema model.
+        """
+
+    # Get a quest by ID
+    query = select(QuestModel).where(QuestModel.id == quest_id)
+    result = await db.execute(query)
+    quest = result.scalar_one_or_none()
+
+    if not quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+
+    # Update all quest fields according to the received data
+    quest.title = quest_data.title
+    quest.description = quest_data.description
+    quest.image_url = quest_data.image_url
+    quest.requirements = quest_data.requirements
+    quest.award = quest_data.award
+    quest.goal = quest_data.goal
+
+    await db.commit()
+    await db.refresh(quest)
+
+    return QuestSchema.from_orm(quest)
+
+
+async def delete_quest_in_db(db: AsyncSession, quest_id: UUID):
+    """
+        Asynchronously delete a quest from the database.
+
+        This function retrieves a quest by its ID and deletes it from the database
+        if found. It then commits the transaction.
+
+        Args:
+            db (AsyncSession): The database session for making queries.
+            quest_id (UUID): The unique identifier of the quest to delete.
+
+        Raises:
+            HTTPException: Raises a 404 error if the quest with the given ID
+                           is not found.
+
+        Returns:
+            dict: A confirmation message that the quest was deleted successfully.
+        """
+    # Get a quest by ID
+    query = select(QuestModel).where(QuestModel.id == quest_id)
+    result = await db.execute(query)
+    quest = result.scalar_one_or_none()
+
+    if not quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+
+    # Deleting a quest
+    await db.delete(quest)
+    await db.commit()
+
+    return {"message": "Quest deleted successfully"}

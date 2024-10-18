@@ -19,6 +19,9 @@ from app.crud import (
     create_quest,
     get_quests,
     get_quest_by_id,
+    update_quest_fields_in_db,
+    update_quest_in_db,
+    delete_quest_in_db
 )
 from app.database import get_db
 from uuid import UUID
@@ -65,7 +68,7 @@ async def read_initial_quest(db: AsyncSession = Depends(get_db)):
 
 
 # Endpoint to create a new quest
-@router.post("/quests/", response_model=QuestSchema)
+@router.post("/quests", response_model=QuestSchema, status_code=201)
 async def create_new_quest(quest: QuestSchema, db: AsyncSession = Depends(get_db)):
     """
     Create a new quest in the database.
@@ -75,7 +78,20 @@ async def create_new_quest(quest: QuestSchema, db: AsyncSession = Depends(get_db
 
     Returns the created quest with its ID.
     """
-    return await create_quest(quest, db)
+    if not all([
+        quest.name,
+        quest.image_url,
+        quest.description,
+        quest.requirements,
+        quest.award,
+        quest.goal
+    ]):
+        raise HTTPException(
+            status_code=400,
+            detail="Missing required fields"
+        )
+    created_quest = await create_quest(quest, db)
+    return created_quest
 
 
 # Endpoint to retrieve a list of quests with optional pagination
@@ -216,3 +232,72 @@ async def delete_reward(reward_id: UUID, db: AsyncSession = Depends(get_db)):
         return {"message": "Reward deleted successfully"}
     else:
         raise HTTPException(status_code=404, detail="Reward not found")
+
+#Endpoint for update quest completely
+@router.put("/quests/{id}", response_model=QuestSchema)
+async def update_quest(quest_id: UUID, quest: QuestSchema, db: AsyncSession = Depends(get_db)):
+    """
+        Update an existing quest completely in the database.
+
+        - **quest_id**: The unique ID of the quest to update.
+        - **quest**: The full quest data to replace the existing one, provided in the request body.
+        - **db**: Database session dependency, automatically provided by FastAPI.
+
+        Raises a 404 error if the quest with the given ID is not found.
+        Raises a 400 error if any required fields (name, image_url, description, requirements, award, goal) are missing.
+
+        Returns the fully updated quest as a response model.
+        """
+    existing_quest = await get_quest_by_id(db, quest_id)
+    if not existing_quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+
+    if not all([quest.name, quest.image_url, quest.description, quest.requirements, quest.award, quest.goal]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    updated_quest = await update_quest_in_db(quest_id, quest, db)  # Assuming an update function exists
+    return updated_quest
+
+
+#Endpoint for partially update quest
+@router.patch("/quests/{id}", response_model=QuestSchema)
+async def partial_update_quest(quest_id: UUID, quest: QuestSchema, db: AsyncSession = Depends(get_db)):
+    """
+        Partially update an existing quest in the database.
+
+        - **quest_id**: The unique ID of the quest to update.
+        - **quest**: The fields of the quest to update, provided in the request body. Only fields with values will be updated.
+        - **db**: Database session dependency, automatically provided by FastAPI.
+
+        Raises a 404 error if the quest with the given ID is not found.
+
+        Returns the updated quest with only the modified fields.
+        """
+    existing_quest = await get_quest_by_id(db, quest_id)
+    if not existing_quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+
+    updated_fields = {k: v for k, v in quest.dict().items() if v is not None}
+    updated_quest = await update_quest_fields_in_db(quest_id, updated_fields, db)  # Assuming a function to handle partial updates
+    return updated_quest
+
+
+#Endpoint for deleter quest
+@router.delete("/quests/{id}", status_code=204)
+async def delete_quest(quest_id: UUID, db: AsyncSession = Depends(get_db)):
+    """
+        Delete an existing quest from the database.
+
+        - **quest_id**: The unique ID of the quest to delete.
+        - **db**: Database session dependency, automatically provided by FastAPI.
+
+        Raises a 404 error if the quest with the given ID is not found.
+
+        Returns a 204 status code with no content upon successful deletion.
+        """
+    quest = await get_quest_by_id(db, quest_id)
+    if not quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+
+    await delete_quest_in_db(quest_id, db)  # Assuming a delete function exists
+    return
