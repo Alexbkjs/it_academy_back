@@ -30,9 +30,7 @@ class UserRoleCreate(BaseModel):
 
 class QuestBase(BaseModel):
     name: str
-    image_url: HttpUrl = Field(
-        ..., alias="imageUrl", description="URL of the quest image"
-    )
+    image_url: str = Field(..., alias="imageUrl", description="URL of the quest image")
     description: str
     award: str
     goal: str
@@ -44,6 +42,38 @@ class QuestBase(BaseModel):
 
 
 class Quest(QuestBase):
+    id: UUID
+    created_at: datetime = Field(None, alias="createdAt")
+    updated_at: Optional[datetime] = Field(None, alias="updatedAt")
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True  # Allow using field names for population
+
+
+class QuestPatchUpdate(BaseModel):
+    name: Optional[str] = None
+    image_url: Optional[str] = Field(None, alias="imageUrl")
+    description: Optional[str] = None
+    award: Optional[str] = None
+    goal: Optional[str] = None
+    requirements: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+
+class QuestCreateResponse(QuestBase):
+    id: UUID
+    created_at: datetime = Field(None, alias="createdAt")
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True  # Allow using field names for population
+
+
+class QuestUpdateResponse(QuestBase):
     id: UUID
     created_at: datetime = Field(None, alias="createdAt")
     updated_at: Optional[datetime] = Field(None, alias="updatedAt")

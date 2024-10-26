@@ -2,36 +2,21 @@ services:
   db:
     image: postgres:15
     container_name: fastapi_postgres
-    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data 
-      
+    # volumes:
+    #   - postgres_data:/var/lib/postgresql/data
+
     # In development, it's best to avoid persistent volumes to ensure a fresh database state for every developer, using migrations and seed data to maintain consistency.
     # In production, you should use persistent volumes for database data, automate migrations, and implement proper backup and rollback mechanisms.
-    networks:
-      - back-network
 
-  migrate-db:
-    image: flyway/flyway
-    command: -url=jdbc:postgresql://db/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} migrate
-    depends_on:
-      - db
-    networks:
-      - back-network
-    
   app:
-    build:
-      context: ./
-      dockerfile: Dockerfile
-    container_name: academy_back
+    build: .
     command: bash -c "python wait_for_db.py && alembic upgrade head && python seed_db.py && uvicorn main:app --host 0.0.0.0 --port 9000 --reload"
-    restart: unless-stopped
     depends_on:
       - db
     volumes:
@@ -45,13 +30,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      
-    networks:
-      - back-network
-
-volumes:
-  postgres_data:
-
-networks:
-  back-network:
-    driver: bridge
