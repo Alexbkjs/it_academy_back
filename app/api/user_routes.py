@@ -26,6 +26,8 @@ from app.schemas import (
     UserRoleCreate,
     UserCreate,
     UpdateUserClassRequest,
+    User,
+    UpdateUserProfileDetailsRequest,
 )  # User data validation schema
 from app.crud import (
     get_user_by_tID,
@@ -41,6 +43,46 @@ from app.utils.get_current_user import get_current_user
 from app.utils.role_check import role_required
 
 router = APIRouter()  # Create an APIRouter instance for handling routes
+
+
+from sqlalchemy.future import select
+from sqlalchemy.exc import NoResultFound
+from fastapi import HTTPException
+
+
+@router.patch("/user")
+async def update_selected_information(
+    new_user_data: UpdateUserProfileDetailsRequest,
+    current_user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Updates selected information for the current user.
+
+    Args:
+        new_user_data: A `UpdateUserProfileDetailsRequest` object containing fields to update.
+        current_user: The current authenticated user.
+        db: The database session.
+
+    Returns:
+        A JSON response indicating success or failure.
+    """
+    try:
+        result = await db.execute(
+            select(UserModel).filter(UserModel.telegram_id == current_user.telegram_id)
+        )
+        user_info = result.scalar_one()
+    except NoResultFound:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    for field, value in new_user_data.dict(exclude_unset=True).items():
+        setattr(user_info, field, value)
+
+    db.add(user_info)
+    await db.commit()
+    await db.refresh(user_info)
+
+    return {"message": "User information updated successfully", "user": user_info}
 
 
 # @router.put("/user/class", response_model=UserResponse) // getting validation error
@@ -136,8 +178,8 @@ async def create_user_after_role_selection(
         }
 
     new_user = await create_user(db, UserCreate(**user_data))
-    await assign_initial_quests(db, new_user.id)
-    await assign_initial_achievements(db, new_user.id)
+    # await assign_initial_quests(db, new_user.id)
+    # await assign_initial_achievements(db, new_user.id)
 
     new_user_with_assigned_data = await get_user_by_tID(
         db, user_data.get("telegram_id")

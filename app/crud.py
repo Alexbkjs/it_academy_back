@@ -123,7 +123,6 @@ async def get_user_by_tID(db: AsyncSession, telegram_id: int) -> Optional[UserSc
         user.quest_progress = list(
             reversed(user.quest_progress)
         )  # Reverse the list in place
-
         # Return the user as a Pydantic model (UserSchema)
         return UserSchema.model_validate(
             user

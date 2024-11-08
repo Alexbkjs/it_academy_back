@@ -8,6 +8,16 @@ class UpdateUserClassRequest(BaseModel):
     userClass: str
 
 
+class UpdateUserProfileDetailsRequest(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    user_class: Optional[str] = None
+    level: Optional[int] = None
+    coins: Optional[int] = None
+    points: Optional[int] = None
+
+
 class UserRoleModel(BaseModel):
     id: UUID
     role_name: str
@@ -29,12 +39,17 @@ class UserRoleCreate(BaseModel):
 
 
 class QuestBase(BaseModel):
+    type: str
     name: str
     image_url: str = Field(..., alias="imageUrl", description="URL of the quest image")
     description: str
     award: str
     goal: str
     requirements: str
+    required_level: int = Field(
+        ..., alias="requiredLevel", description="Level to accept the quest"
+    )
+    long_description: str
 
     class Config:
         from_attributes = True  # Enables Pydantic to work with ORM objects directly
@@ -133,6 +148,8 @@ class UserQuestProgressBase(BaseModel):
     started_at: Optional[datetime] = Field(None, alias="startedAt")
     completed_at: Optional[datetime] = Field(None, alias="completedAt")
     is_locked: bool = Field(True, alias="isLocked")
+    mentor_comment: Optional[str] = Field(..., alias="mentorComment")
+    is_reward_accepted: bool = Field(False, alias="isRewardAccepted")
 
     class Config:
         from_attributes = True
@@ -149,6 +166,22 @@ class UserQuestProgress(UserQuestProgressBase):
     class Config:
         from_attributes = True
         populate_by_name = True  # Allow using field names for population
+
+
+class UserQuestProgressResponse(UserQuestProgressBase):
+    id: UUID
+    quest_id: UUID = Field(..., alias="questId")
+    user_id: UUID = Field(..., alias="userId")
+    created_at: datetime = Field(..., alias="createdAt")
+    updated_at: Optional[datetime] = Field(None, alias="updatedAt")
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True  # Allow using field names for population
+
+
+class UserQuestProgressChangesRequest(BaseModel):
+    mentor_comment: str
 
 
 # Achievement schema
@@ -203,9 +236,9 @@ class UserBase(BaseModel):
         "https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg",
         alias="imageUrl",
     )
-    level: int = Field(1, alias="level")
-    points: int = Field(100, alias="points")
-    coins: int = Field(1000, alias="coins")
+    level: int = Field(0, alias="level")
+    points: int = Field(0, alias="points")
+    coins: int = Field(0, alias="coins")
     # Now role is an object instead of just role_id
     role: UserRoleResponse
     # role_id: UUID  # Change to string to match incoming role value
@@ -228,9 +261,9 @@ class UserCreate(BaseModel):
         "https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg",
         alias="imageUrl",
     )
-    level: int = Field(1, alias="level")
-    points: int = Field(100, alias="points")
-    coins: int = Field(1000, alias="coins")
+    level: int = Field(0, alias="level")
+    points: int = Field(0, alias="points")
+    coins: int = Field(0, alias="coins")
     # Now role is an object instead of just role_id
     # role: Optional[UserRoleModel] = None
     role_id: UUID  # Change to string to match incoming role value
@@ -255,7 +288,7 @@ class User(UserBase):
 
 class UserResponse(BaseModel):
     message: Optional[str] = None  # The message field is now optional
-    user: UserBase
+    user: User
 
     class Config:
         from_attributes = True  # Enables Pydantic to work with ORM objects directly

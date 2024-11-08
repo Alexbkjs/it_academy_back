@@ -38,9 +38,9 @@ class User(Base):
         nullable=False,
         default="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg",
     )
-    level = Column(Integer, default=1)
-    points = Column(Integer, default=100)
-    coins = Column(Integer, default=1000)
+    level = Column(Integer, default=0)
+    points = Column(Integer, default=0)
+    coins = Column(Integer, default=0)
     role_id = Column(
         UUID(as_uuid=True), ForeignKey("user_roles.id"), nullable=True
     )  # ForeignKey reference
@@ -61,12 +61,15 @@ class Quest(Base):
     __tablename__ = "quests"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    type = Column(String, nullable=False)
     name = Column(String, nullable=False)
     image_url = Column(String, default="")
     description = Column(String, default="")
     award = Column(String, default="")
     goal = Column(String, default="")
     requirements = Column(String, default="")
+    required_level = Column(Integer, default=0)
+    long_description = Column(String, default="")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
 
@@ -127,9 +130,11 @@ class UserQuestProgress(Base):
     )  # Corrected ForeignKey
     status = Column(String, nullable=False)
     progress = Column(Float, default=0.0)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, server_default=func.now())
+    completed_at = Column(DateTime, onupdate=func.now(), nullable=True)
     is_locked = Column(Boolean, default=True)
+    mentor_comment = Column(String, default="")
+    is_reward_accepted = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now(), nullable=True)
 

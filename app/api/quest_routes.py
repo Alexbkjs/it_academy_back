@@ -1,8 +1,16 @@
 # app/api/quest_routes.py
 from sqlalchemy import select, update
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+    Body,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import Reward as RewardModel
+from app.models import Reward as RewardModel, Quest, UserQuestProgress
 from app.schemas import (
     Quest as QuestSchema,
     QuestBase,
@@ -11,6 +19,10 @@ from app.schemas import (
     RewardBase as RewardBaseSchema,
     InitialQuestResponse,
     QuestCreateResponse,
+    User,
+    UserQuestProgressResponse,
+    UserQuestProgressChangesRequest,
+    UserQuestProgress as UserQuestProgressSchema,
 )
 from app.crud import (
     create_quest,
@@ -29,6 +41,9 @@ from app.crud import (
 from app.database import get_db
 from uuid import UUID
 from app.utils.get_current_user import get_current_user
+from app.utils.get_user_id import get_user_id
+from datetime import datetime, timezone
+from typing import Dict, List
 
 
 from app.utils.role_check import role_required
@@ -109,6 +124,57 @@ async def read_quests(
         quests=quests,
         total=total_count,
     )
+
+
+# @router.get("/quests/progress", response_model=Dict[str, UserQuestProgressResponse])
+# async def get_user_quests(db: AsyncSession = Depends(get_db)):
+#     result = await db.execute(select(UserQuestProgress))
+#     user_quest_records = result.scalars().all()
+
+#     if not user_quest_records:
+#         raise HTTPException(status_code=404, detail="No quest progress records found")
+
+#     # Convert the list of `UserQuestProgress` objects to a dictionary keyed by quest ID
+#     user_quest_dict = {
+#         str(record.quest_id): UserQuestProgressResponse(
+#             id=record.id,
+#             userId=record.user_id,
+#             questId=str(record.quest_id),
+#             status=record.status,
+#             progress=record.progress,
+#             startedAt=record.started_at.isoformat() if record.started_at else None,
+#             completedAt=(
+#                 record.completed_at.isoformat() if record.completed_at else None
+#             ),
+#             mentorComment=record.mentor_comment,
+#         )
+#         for record in user_quest_records
+#     }
+
+#     return user_quest_dict
+
+
+# @router.get("/quests/quests_progress")
+@router.get(
+    "/quests/quests_progress",
+)
+async def accept_quest(
+    user_id: User = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    # Check if the quest exists
+    result = await db.execute(select(UserQuestProgress))
+    quests_progress = result.scalars().all()
+
+    if not quests_progress:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Quests progress not found"
+        )
+
+    # Create a dictionary where id is the key and UserQuestProgressResponse is the value
+    mapped_data = {quest.quest_id: quest for quest in quests_progress}
+
+    return mapped_data
 
 
 @router.get("/quests/{quest_id}", response_model=QuestSchema)
@@ -297,3 +363,183 @@ async def delete_quest(quest_id: UUID, db: AsyncSession = Depends(get_db)):
 
     # Explicitly return a 204 No Content response
     return Response(status_code=204)
+
+
+# Endpoint 1: Accept a Quest
+# @router.post("/quests/{quest_id}/accept")
+@router.post("/quests/{quest_id}/accept", response_model=UserQuestProgressResponse)
+async def accept_quest(
+    quest_id: UUID,
+    user_id: User = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    # Check if the quest exists
+    result = await db.execute(select(Quest).filter(Quest.id == quest_id))
+    quest = result.scalar_one_or_none()
+    if not quest:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Quest not found"
+        )
+
+    # Check if the user has already accepted this quest
+    result = await db.execute(
+        select(UserQuestProgress).filter(
+            UserQuestProgress.user_id == user_id,
+            UserQuestProgress.quest_id == quest_id,
+        )
+    )
+    existing_progress = result.scalar_one_or_none()
+
+    if existing_progress:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User has already accepted this quest",
+        )
+
+    # Create a new UserQuestProgress record
+    new_progress = UserQuestProgress(
+        user_id=user_id,
+        quest_id=quest_id,
+        status="IN_PROGRESS",  # Set initial quest status
+    )
+
+    # Add and commit the new progress
+    db.add(new_progress)
+    await db.commit()
+    await db.refresh(new_progress)
+
+    return new_progress
+
+
+# Endpoint 2: Submit a Quest for Review
+@router.post("/quests/{quest_id}/submit", response_model=UserQuestProgressResponse)
+async def submit_quest(
+    quest_id: UUID,
+    user_id: UUID = Depends(
+        get_user_id
+    ),  # Uses get_user_id to retrieve only the user's ID
+    db: AsyncSession = Depends(get_db),
+):
+    # Check if the quest progress record exists for the user
+    result = await db.execute(
+        select(UserQuestProgress).filter(
+            UserQuestProgress.user_id == user_id, UserQuestProgress.quest_id == quest_id
+        )
+    )
+    quest_progress = result.scalars().first()
+
+    # If no progress record, return an error
+    if not quest_progress:
+        raise HTTPException(
+            status_code=404, detail="Quest progress not found for this user"
+        )
+
+    # Check if the quest is already in review or completed
+    if quest_progress.status in ["REVIEW_PENDING", "TASK_COMPLETED"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Quest is already submitted for review or completed",
+        )
+
+    # Update quest status to "REVIEW_PENDING"
+    quest_progress.status = "REVIEW_PENDING"
+    # quest_progress.updated_at = datetime.now(timezone.utc)
+
+    db.add(quest_progress)
+    await db.commit()
+    await db.refresh(quest_progress)
+
+    return quest_progress
+
+
+@router.post(
+    "/quests/{quest_id}/request_changes", response_model=UserQuestProgressResponse
+)
+async def request_changes(
+    quest_id: UUID,
+    mentor_comment: UserQuestProgressChangesRequest,
+    user_id: UUID = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(UserQuestProgress).filter(
+            UserQuestProgress.user_id == user_id, UserQuestProgress.quest_id == quest_id
+        )
+    )
+    quest_progress = result.scalars().first()
+
+    if not quest_progress or quest_progress.status != "REVIEW_PENDING":
+        raise HTTPException(
+            status_code=400,
+            detail="Quest is not in a reviewable state for requesting changes",
+        )
+
+    quest_progress.status = "CHANGES_REQUESTED"
+    quest_progress.mentor_comment = mentor_comment.mentor_comment
+    # quest_progress.updated_at = datetime.now(timezone.utc)
+
+    db.add(quest_progress)
+    await db.commit()
+    await db.refresh(quest_progress)
+
+    return quest_progress
+
+
+@router.post("/quests/{quest_id}/complete", response_model=UserQuestProgressResponse)
+async def complete_quest(
+    quest_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(UserQuestProgress).filter(
+            UserQuestProgress.user_id == user_id, UserQuestProgress.quest_id == quest_id
+        )
+    )
+    quest_progress = result.scalars().first()
+
+    if not quest_progress or quest_progress.status != "REVIEW_PENDING":
+        raise HTTPException(
+            status_code=400,
+            detail="Quest is not in a reviewable state for completion",
+        )
+
+    quest_progress.status = "TASK_COMPLETED"
+    # quest_progress.completed_at = datetime.now(timezone.utc)
+
+    db.add(quest_progress)
+    await db.commit()
+    await db.refresh(quest_progress)
+
+    return quest_progress
+
+
+@router.post(
+    "/quests/{quest_id}/accept_reward", response_model=UserQuestProgressResponse
+)
+async def complete_quest(
+    quest_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(UserQuestProgress).filter(
+            UserQuestProgress.user_id == user_id, UserQuestProgress.quest_id == quest_id
+        )
+    )
+    quest_progress = result.scalars().first()
+
+    if not quest_progress or quest_progress.status != "TASK_COMPLETED":
+        raise HTTPException(
+            status_code=400,
+            detail="Quest is not in a accept reward state",
+        )
+
+    quest_progress.is_reward_accepted = True
+    # quest_progress.completed_at = datetime.now(timezone.utc)
+
+    db.add(quest_progress)
+    await db.commit()
+    await db.refresh(quest_progress)
+
+    return quest_progress
