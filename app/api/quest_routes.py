@@ -163,7 +163,9 @@ async def accept_quest(
     db: AsyncSession = Depends(get_db),
 ):
     # Check if the quest exists
-    result = await db.execute(select(UserQuestProgress))
+    result = await db.execute(
+        select(UserQuestProgress).where(UserQuestProgress.user_id == user_id)
+    )
     quests_progress = result.scalars().all()
 
     if not quests_progress:
