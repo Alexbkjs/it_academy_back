@@ -26,8 +26,11 @@ jobs:
 
             
         # Step to navigate to the directory where Terraform files are located
+        - name: Print working directory
+          run: pwd
+
         - name: Change directory to Terraform folder
-          run: cd infrastructure/stage
+          run: cd ./infrastructure/stage
 
       # Initialize Terraform
         - name: Terraform Init
