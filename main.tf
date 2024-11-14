@@ -5,7 +5,7 @@ provider "azurerm" {
 resource "azurerm_container_group" "app_group" {
   name                = "myAppContainerGroup"
   location            = "East US"
-  resource_group_name = "myResourceGroup"
+  resource_group_name = "cloud-shell-storage-northeurope"
 
   container {
     name   = "fastapi"
