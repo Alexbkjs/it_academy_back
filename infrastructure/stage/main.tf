@@ -1,36 +1,37 @@
-resource "random_pet" "rg_name" {
-  prefix = var.resource_group_name_prefix
+provider "azurerm" {
+  features {}
 }
 
-resource "azurerm_resource_group" "rg" {
-  name     = random_pet.rg_name.id
-  location = var.resource_group_location
-}
-
-resource "random_string" "container_name" {
-  length  = 25
-  lower   = true
-  upper   = false
-  special = false
-}
-
-resource "azurerm_container_group" "container" {
-  name                = "${var.container_group_name_prefix}-${random_string.container_name.result}"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  ip_address_type     = "Public"
-  os_type             = "Linux"
-  restart_policy      = var.restart_policy
+resource "azurerm_container_group" "app_group" {
+  name                = "myAppContainerGroup"
+  location            = "East US"
+  resource_group_name = "myResourceGroup"
 
   container {
-    name   = "${var.container_name_prefix}-${random_string.container_name.result}"
-    image  = var.image
-    cpu    = var.cpu_cores
-    memory = var.memory_in_gb
-
+    name   = "fastapi"
+    image  = "questappacr.azurecr.io/myapp:latest"
+    cpu    = "0.5"
+    memory = "1.5"
     ports {
-      port     = var.port
+      port     = 9000
       protocol = "TCP"
     }
+    environment_variables = {
+      DATABASE_URL = "postgresql+asyncpg://admin:pass@db:5432/iar_db"
+    }
   }
+
+  container {
+    name   = "postgres"
+    image  = "postgres:latest"
+    cpu    = "0.5"
+    memory = "1.5"
+    environment_variables = {
+      POSTGRES_DB       = "iar_db"
+      POSTGRES_USER     = "admin"
+      POSTGRES_PASSWORD = "pass"
+    }
+  }
+
+  os_type = "Linux"
 }
