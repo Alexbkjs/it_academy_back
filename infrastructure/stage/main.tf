@@ -9,7 +9,7 @@ resource "azurerm_container_group" "app_group" {
 
   container {
     name   = "fastapi"
-    image  = "questappacr.azurecr.io/myapp:latest"
+    image  = "questappacr.azurecr.io/it_academy:latest"
     cpu    = "0.5"
     memory = "1.5"
     ports {
