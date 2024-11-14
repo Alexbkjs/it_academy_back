@@ -21,6 +21,22 @@ jobs:
             username: ${{ secrets.REGISTRY_USERNAME }}
             password: ${{ secrets.REGISTRY_PASSWORD }}
         - run: |
-            docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy:${{ github.sha }}
-            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy:${{ github.sha }}
+            docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy:latest
+            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy:latest
+
+            
+        # Step to navigate to the directory where Terraform files are located
+        - name: Change directory to Terraform folder
+          run: cd infrastructure/stage
+
+      # Initialize Terraform
+        - name: Terraform Init
+          run: terraform init
+
+      # Apply Terraform configuration
+        - name: Terraform Apply
+          run: terraform apply -auto-approve
+
+
+
             
