@@ -24,12 +24,13 @@ jobs:
         - name: Build FastAPI Docker image
         - run: |
             docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:${{ github.sha }}
-            docker tag  ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:latest
+            docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:${{ github.sha }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:latest
             
         - name: Push FastAPI Docker image
         - run: |
-            docker push  . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:${{ github.sha }}
-            docker push   ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:latest
+            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:${{ github.sha }}
+            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy/fastapi:latest
+
 
         - name: 'Deploy to Azure Container Instances'
           uses: 'azure/aci-deploy@v1'
