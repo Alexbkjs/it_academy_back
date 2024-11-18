@@ -33,7 +33,7 @@ resource "azurerm_container_group" "app_group" {
     }
   }
 
-  registry_credentials {
+  image_registry_credentials {
     server   = "questappacr.azurecr.io"
     username = "questappacr"        # Add ACR admin username or SP ID here
     password = "/srJbiW9+t+mTLh1rVtGWPJ/iXAilX7mCRMQMyKI8E+ACRDDUiTR"        # Add ACR admin password or SP password here
