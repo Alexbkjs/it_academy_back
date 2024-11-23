@@ -1,0 +1,49 @@
+apiVersion: 2021-09-01
+location: northeurope
+name: fastapi-app-v5
+properties:
+  imageRegistryCredentials:
+    - server: questappacr.azurecr.io
+      username: questappacr
+      password: /srJbiW9+t+mTLh1rVtGWPJ/iXAilX7mCRMQMyKI8E+ACRDDUiTR
+  containers:
+    - name: db
+      properties:
+        image: questappacr.azurecr.io/postgres:15
+        resources:
+          requests:
+            cpu: 1.0
+            memoryInGB: 1.5
+        environmentVariables:
+          - name: POSTGRES_USER
+            value: admin
+          - name: POSTGRES_PASSWORD
+            value: pass
+          - name: POSTGRES_DB
+            value: iar_db
+        ports:
+          - port: 5432
+    - name: fastapi-app
+      properties:
+        image: questappacr.azurecr.io/fastapi:v4
+        resources:
+          requests:
+            cpu: 1.0
+            memoryInGB: 1.5
+        environmentVariables:
+          - name: DATABASE_URL
+            value: "postgresql+asyncpg://admin:pass@localhost:5432/iar_db"
+          - name: BOT_TOKEN
+            value: "7201821525:AAH7loon08xcZTodc9tVUc1zH4zaZXd3fZA"
+        ports:
+          - port: 9000
+  restartPolicy: Always
+
+  ipAddress:
+    type: Public
+    ports:
+      - port: 5432
+      - port: 9000
+    dnsNameLabel: fastapi
+  osType: Linux
+type: Microsoft.ContainerInstance/containerGroups

@@ -15,7 +15,8 @@ async def wait_for_db():
             dbname = os.getenv("POSTGRES_DB")
             user = os.getenv("POSTGRES_USER")
             password = os.getenv("POSTGRES_PASSWORD")
-            host = "db"  # Service name in Docker Compose
+            host = os.getenv("POSTGRES_HOST")
+            # host = "db"  # Service name in Docker Compose
             port = "5432"
             # Attempt to connect to the database
             conn = await asyncpg.connect(

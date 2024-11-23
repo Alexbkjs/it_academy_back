@@ -7,6 +7,7 @@ from app.api.leaderboard import router as leaderboard
 from app.admin.admin_routes import router as admin_router
 
 from app.utils.auth_middleware import AuthMiddleware
+import os
 
 # Create an instance of the FastAPI application
 app = FastAPI()
@@ -40,6 +41,8 @@ app.include_router(
 app.include_router(leaderboard, prefix=api_prefix, tags=["leaderboard"])
 
 app.include_router(admin_router, prefix=admin_api_prefix, tags=["admin"])
+DATABASE_URL = os.getenv("DATABASE_URL")
+print(DATABASE_URL, "db from main.py")
 
 
 @app.get("/health")

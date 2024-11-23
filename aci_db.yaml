@@ -1,0 +1,31 @@
+apiVersion: 2021-09-01
+location: northeurope
+name: it-academy-db
+properties:
+  imageRegistryCredentials:
+    - server: questappacr.azurecr.io
+      username: questappacr
+      password: /srJbiW9+t+mTLh1rVtGWPJ/iXAilX7mCRMQMyKI8E+ACRDDUiTR
+  containers:
+    - name: db
+      properties:
+        image: questappacr.azurecr.io/postgres:15
+        resources:
+          requests:
+            cpu: 1.0
+            memoryInGB: 2
+        environmentVariables:
+          - name: POSTGRES_USER
+            value: admin
+          - name: POSTGRES_PASSWORD
+            value: pass
+          - name: POSTGRES_DB
+            value: iar_db
+        ports:
+          - port: 5432
+  restartPolicy: Always
+  ipAddress:
+    type: Public
+    ports:
+      - port: 5432
+  osType: Linux
