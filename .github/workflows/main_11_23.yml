@@ -1,9 +1,5 @@
 name: Build and Deploy Containers to ACR
-
-on:
-  push:
-    branches:
-      - deploy_v2
+on: [push]
 
 jobs:
   build-and-push:
