@@ -1,0 +1,43 @@
+name: Build and Deploy Containers to ACR
+
+on:
+  push:
+    branches:
+      - deploy_v2
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
+
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Build FastAPI Docker image
+      run: |
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }} .
+        docker tag ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }} ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:latest
+
+    - name: Push FastAPI Docker image to ACR
+      run: |
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }}
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:latest
+        
+    - name: 'Deploy to Azure Container Instances'
+      uses: 'azure/aci-deploy@v1'
+      with:
+        resource-group: ${{ secrets.RESOURCE_GROUP }}
+        dns-name-label: ${{ secrets.RESOURCE_GROUP }}-${{ github.run_id }}
+        image: ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:latest
+        registry-login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        registry-username: ${{ secrets.REGISTRY_USERNAME }}
+        registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+        name: fastapi-app-2
+        location: 'North Europe'
+    env:
+      ACTIONS_STEP_DEBUG: true
