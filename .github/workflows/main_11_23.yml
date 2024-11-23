@@ -18,6 +18,10 @@ jobs:
       run: |
         docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }} .
         docker tag ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }} ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:latest
+        
+    - name: Log in to ACR
+      run: |
+        az acr login --name ${{ secrets.ACR_LOGIN_SERVER }}
 
     - name: Push FastAPI Docker image to ACR
       run: |
