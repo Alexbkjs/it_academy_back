@@ -1,44 +1,48 @@
+name: Build and Deploy Containers to ACR
 on: [push]
-name: CI/CD IT Academy app
 
 jobs:
-    build-and-deploy:
-        runs-on: ubuntu-latest
-        steps:
-        # checkout the repo
-        - name: 'Checkout GitHub Action'
-          uses: actions/checkout@main
-          
-        - name: 'Login via Azure CLI'
-          uses: azure/login@v1
-          with:
-            creds: ${{ secrets.AZURE_CREDENTIALS }}
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
+
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Build FastAPI Docker image
+      run: |
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }} .
+        docker tag ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }} ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:latest
         
-        - name: 'Build and push image'
-          uses: azure/docker-login@v1
-          with:
-            login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-            username: ${{ secrets.REGISTRY_USERNAME }}
-            password: ${{ secrets.REGISTRY_PASSWORD }}
-        - run: |
-            docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy:latest
-            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/it_academy:latest
+    - name: Log in to ACR
+      run: |
+        az acr login --name ${{ secrets.ACR_LOGIN_SERVER }}
 
-            
-        - name: Set up Terraform
-          uses: hashicorp/setup-terraform@v1
-
-        - name: Initialize Terraform
-          run: terraform init
-
-        - name: Apply Terraform
-          run: terraform apply -auto-approve
-          env:
-              ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-              ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-              ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-              ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-
-
-
-            
+    - name: Push FastAPI Docker image to ACR
+      run: |
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:${{ github.sha }}
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:latest
+        
+    - name: 'Deploy to Azure Container Instances'
+      uses: 'azure/aci-deploy@v1'
+      with:
+        resource-group: ${{ secrets.RESOURCE_GROUP }}
+        dns-name-label: fastapi-${{ github.run_id }}
+        image: ${{ secrets.ACR_LOGIN_SERVER }}/fastapi:latest
+        registry-login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        registry-username: ${{ secrets.REGISTRY_USERNAME }}
+        registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+        name: fastapi-app
+        location: 'North Europe'
+        environment-variables: |
+          DATABASE_URL=postgresql+asyncpg://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+        ports: |
+          9000
+    env:
+      ACTIONS_STEP_DEBUG: true
