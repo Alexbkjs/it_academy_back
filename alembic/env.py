@@ -5,6 +5,7 @@ import asyncio
 import os
 from dotenv import load_dotenv
 
+
 # Import your Base and models here
 from app.models import (
     User,
@@ -30,8 +31,11 @@ fileConfig(config.config_file_name)
 
 # Load the DATABASE_URL from the .env file
 # DATABASE_URL = "postgresql+asyncpg://admin:pass@fastapi-postgres/iar_db"
-DATABASE_URL = os.getenv("DATABASE_URL")
-print(DATABASE_URL)
+# DATABASE_URL = os.getenv("DATABASE_URL")
+# DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = "postgresql+asyncpg://admin:pass@135.236.142.170:5432/iar_db"
+
+print("working with: ", DATABASE_URL)
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in the .env file")

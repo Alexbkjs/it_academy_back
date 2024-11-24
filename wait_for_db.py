@@ -22,6 +22,7 @@ async def wait_for_db():
             conn = await asyncpg.connect(
                 user=user, password=password, database=dbname, host=host, port=port
             )
+            print("success")
             await conn.close()
             break
         except Exception:

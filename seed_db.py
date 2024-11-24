@@ -24,7 +24,11 @@ import os
 load_dotenv()
 
 # Retrieve the database URL from environment variables
-DATABASE_URL = os.getenv("DATABASE_URL")
+# DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = "postgresql+asyncpg://admin:pass@135.236.142.170:5432/iar_db"
+
+print("working with: ", DATABASE_URL)
+
 
 # To ensure that the Requirement, Reward, and UserQuestProgress records correctly reference existing Quest and User records,
 # you need to first fetch the created records and use their UUIDs for foreign key relationships. Here’s how you can modify your
