@@ -39,6 +39,7 @@ class User(Base):
         default="https://quests-app-bucket.s3.eu-north-1.amazonaws.com/images/ava6.jpg",
     )
     level = Column(Integer, default=0)
+    test_migration = Column(String, default="Success")
     points = Column(Integer, default=0)
     coins = Column(Integer, default=0)
     role_id = Column(

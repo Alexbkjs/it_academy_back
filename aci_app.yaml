@@ -16,7 +16,7 @@ properties:
             memoryInGB: 1.5
         environmentVariables:
           - name: DATABASE_URL
-            value: "postgresql+asyncpg://admin:pass@172.205.15.35:5432/iar_db"
+            value: "postgresql+asyncpg://admin:pass@20.223.95.171:5432/iar_db"
           - name: BOT_TOKEN
             value: "7201821525:AAH7loon08xcZTodc9tVUc1zH4zaZXd3fZA"
         ports:
