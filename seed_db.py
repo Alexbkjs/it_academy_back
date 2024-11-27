@@ -23,11 +23,12 @@ import os
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve the database URL from environment variables
-# DATABASE_URL = os.getenv("DATABASE_URL")
-DATABASE_URL = "postgresql+asyncpg://admin:pass@135.236.142.170:5432/iar_db"
+# Load the DATABASE_URL from the .env files or from shell enviroment variables
+# You can check it using this command "echo $DATABASE_URL"
+# To set new: export DATABASE_URL="postgresql+asyncpg://admin:pass@it-academy-rpg-db.northeurope.azurecontainer.io:5432/iar_db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-print("working with: ", DATABASE_URL)
+print("Working with db from: ", DATABASE_URL)
 
 
 # To ensure that the Requirement, Reward, and UserQuestProgress records correctly reference existing Quest and User records,

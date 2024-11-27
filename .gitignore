@@ -20,3 +20,21 @@ __pycache__/
 
 # Temporary files
 *.tmp
+
+# Local Terraform state files
+terraform.tfstate
+terraform.tfstate.backup
+
+# Terraform plan output files
+*.tfplan
+tfplan
+
+# Terraform plugin and module directory
+.terraform/
+
+# Terraform lock files
+.terraform.lock.hcl
+
+# Sensitive variable files
+terraform.tfvars
+*.auto.tfvars

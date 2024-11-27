@@ -29,13 +29,12 @@ config = context.config
 # Set up logging
 fileConfig(config.config_file_name)
 
-# Load the DATABASE_URL from the .env file
-# DATABASE_URL = "postgresql+asyncpg://admin:pass@fastapi-postgres/iar_db"
-# DATABASE_URL = os.getenv("DATABASE_URL")
-# DATABASE_URL = os.getenv("DATABASE_URL")
-DATABASE_URL = "postgresql+asyncpg://admin:pass@135.236.142.170:5432/iar_db"
+# Load the DATABASE_URL from the .env files or from shell enviroment variables
+# You can check it using this command "echo $DATABASE_URL"
+# To set new: export DATABASE_URL="postgresql+asyncpg://admin:pass@it-academy-rpg-db.northeurope.azurecontainer.io:5432/iar_db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-print("working with: ", DATABASE_URL)
+print("Working with db from: ", DATABASE_URL)
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in the .env file")
